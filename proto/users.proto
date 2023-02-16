@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package greeter;
+
+service Greeter {
+    rpc signup (signUpRequest) returns (signUpReply) {}
+}
+
+message signUpRequest {
+    string email = 1;
+    string password = 2;
+    string name = 3;
+    string iban = 4;
+}
+
+message signUpReply {
+    string token = 1;
+    int32 maxAge = 2;
+}
