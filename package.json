@@ -4,7 +4,8 @@
   "description": "piattaforma per l'acquisto e lo scambio di dollari ed euro",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start-exchange": "node ./exchange/exchange.js",
+    "start-users": "node ./users/users.js"
   },
   "repository": {
     "type": "git",
@@ -17,6 +18,11 @@
   },
   "homepage": "https://github.com/MatildeRodolfi/sf-academy#readme",
   "dependencies": {
-    "express": "^4.18.2"
+    "@grpc/grpc-js": "^1.8.9",
+    "@grpc/proto-loader": "^0.7.5",
+    "express": "^4.18.2",
+    "xhr2": "^0.2.1",
+    "xml-js": "^1.6.11",
+    "xml2js": "^0.4.23"
   }
 }
