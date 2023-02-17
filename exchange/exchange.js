@@ -60,7 +60,8 @@ const implementations = {
 
                         console.log('from '+call.request.from+' to '+call.request.to+' with exchange rate of '+rate+' \n result: '+ris+'\n');
                         return callback(null, {
-                            value: ris
+                            value: ris,
+                            rate: rate
                         })
                     }
                     else{

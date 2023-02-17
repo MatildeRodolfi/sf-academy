@@ -83,14 +83,34 @@ function updateCount(email, symbol, value){
         var query = 'UPDATE users SET '+symbol+' = '+value+
             '+(SELECT '+symbol+' FROM users WHERE email=\''+email+'\' FOR UPDATE)'+
             'WHERE email=\''+email+'\'';
-        console.log(query);
         pool.query(query, (error, results) => {
             if (error) {
                 console.log(error);
                 reject(error);
             }
-            else{
-                console.log('update count into db');
+            resolve(results);
+        })
+    })
+}
+
+/** UPDATE COUNTS - aggiornamento valore di conti con passaggio tra uno e l'altro*/
+function updateCounts(email, from, to, valueFrom, valueTo){
+    return new Promise(function(resolve, reject) {
+        var query = ' DO $$ '+
+            'BEGIN ' +
+            'IF (SELECT '+from+' FROM users WHERE email=\''+email+'\')>='+valueTo+' THEN ' +
+            'UPDATE users SET '+
+            to+' = '+valueTo+'+(SELECT '+to+' FROM users WHERE email=\''+email+'\' FOR UPDATE), '+
+            from+' = -'+valueFrom+'+(SELECT '+from+' FROM users WHERE email=\''+email+'\' FOR UPDATE) '+
+            'WHERE email=\''+email+'\';'+
+            'ELSE '+
+            'SELECT (1 / 0); '+
+            'END IF;'+
+            'END $$;';
+        pool.query(query, (error, results) => {
+            if (error) {
+                console.log(error);
+                reject(error);
             }
             resolve(results);
         })
@@ -98,22 +118,20 @@ function updateCount(email, symbol, value){
 }
 
 /** SAVE TRANSACTION - salvataggio dati della transazione sul db*/
-function saveTransaction(email, to, from, value){
+function saveTransaction(email, from, to, value, rate){
     return new Promise(function(resolve, reject) {
 
-        var query = 'INSERT INTO transaction (mail, "to", "from", value) VALUES ('
+        var query = 'INSERT INTO transaction (mail, "to", "from", value, date, rate) VALUES ('
             +'\''+email+'\', '
             +'\'{'+to+'}\', '
             +'\'{'+from+'}\', '
-            +''+value+')'; 
-        console.log(query);
+            +''+value+', '
+            +'current_timestamp, '
+            +''+rate+')';
         pool.query(query, (error, results) => {
             if (error) {
                 console.log(error);
                 reject(error);
-            }
-            else{
-                console.log('user transaction into db');
             }
             resolve(results);
         })
@@ -130,23 +148,6 @@ function createToken(mail){
 	})
 
     return {token: token, maxAge: jwtExpirySeconds * 1000}
-}
-
-
-
-/** GET EXCHANGE - restituisce il valore di cambio comunicando con il server grpc exchange */
-function getExchange(value, from, to){
-    const descriptorExchange = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/exchange.proto")))
-    const grpcClient = new descriptorExchange.greeter.Greeter("0.0.0.0:9000", grpc.credentials.createInsecure())
-    
-    grpcClient.exchange({value: value, from: from, to: to}, (err, data) => { //TODO probabilmente è asicrono quindi non funziona
-        if (err){
-            console.log("Error with exchange")
-            data = 0
-        }
-
-        return data;
-    })
 }
 
 
@@ -350,8 +351,24 @@ const implementations = {
         }
 
         updateCount(call.request.email, call.request.symbol, call.request.value)
+        .then(response => {
+            console.log('deposit - update count into db');
+
+            saveTransaction(call.request.email, 'IBAN', call.request.symbol, call.request.value, 0)
+            .then(response => {
+                console.log('deposit - save deposit transaction into db');
+            })
+            .catch(error => {
+                console.log("deposit - internal error with db");
+                return callback({
+                    code: 500,
+                    message: "internal error with db",
+                    status: grpc.status.INTERNAL
+                });
+            });
+        })
         .catch(error => {
-            console.log("login - internal error with db");
+            console.log("deposit - internal error with db");
             return callback({
                 code: 500,
                 message: "internal error with db",
@@ -359,32 +376,200 @@ const implementations = {
             });
         });
 
-        saveTransaction(call.request.email, call.request.symbol, 'IBAN', call.request.value)
-        .catch(error => {
-            console.log("login - internal error with db");
-            return callback({
-                code: 500,
-                message: "internal error with db",
-                status: grpc.status.INTERNAL
-            });
-        });
+        
 
         return callback()
     },
 
     /** WITHDRAW - prelievo dal conto dell'utente di una somma nella valuta scelta*/
     withdraw: (call, callback) =>{
+        if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token){
+            console.log("withdraw - invalid input");
+            return callback({
+                code: 400,
+                message: "one or more empty input",
+                status: grpc.status.INTERNAL
+            });
+        }
         
+        try { 
+            jwt.verify(call.request.token, jwtKey)
+        } catch (e) {
+            if (e instanceof jwt.JsonWebTokenError) {
+                console.log("withdraw - wrong token");
+                return callback({
+                    code: 401,
+                    message: "wrong token",
+                    status: grpc.status.INTERNAL
+                });
+            }
+            console.log("withdraw - internal error");
+            return callback({
+                code: 500,
+                message: "internal error",
+                status: grpc.status.INTERNAL
+            });
+        }
+
+        if (call.request.symbol!="EUR" && call.request.symbol!="USD"){
+            console.log("withdraw - invalid input");
+            return callback({
+                code: 400,
+                message: "symbol not correct",
+                status: grpc.status.INTERNAL
+            });
+        }
+
+        if (call.request.value<=0){
+            console.log("withdraw - invalid value");
+            return callback({
+                code: 400,
+                message: "value not correct",
+                status: grpc.status.INTERNAL
+            });
+        }
+
+        updateCount(call.request.email, call.request.symbol, (call.request.value*-1))
+        .then(response => {
+            console.log('withdraw - update count into db');
+
+            saveTransaction(call.request.email, call.request.symbol, 'IBAN', call.request.value, 0)
+            .then(response => {
+                console.log('save withdraw transaction into db');
+            })
+            .catch(error => {
+                console.log("withdraw - internal error with db");
+                return callback({
+                    code: 500,
+                    message: "internal error with db",
+                    status: grpc.status.INTERNAL
+                });
+            });
+        })
+        .catch(error => {
+            console.log("withdraw - internal error with db");
+            return callback({
+                code: 500,
+                message: "internal error with db",
+                status: grpc.status.INTERNAL
+            });
+        });
+
+        
+
+        return callback()
     },
 
+    /** BUY - sposta una determinata quantità da un conto all'altro applicando il tasso di cambio*/
     buy: (call, callback) =>{
+        if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token){
+            console.log("buy - invalid input");
+            return callback({
+                code: 400,
+                message: "one or more empty input",
+                status: grpc.status.INTERNAL
+            });
+        }
+
+        try {
+            jwt.verify(call.request.token, jwtKey)
+        } catch (e) {
+            if (e instanceof jwt.JsonWebTokenError) {
+                console.log("buy - wrong token");
+                return callback({
+                    code: 401,
+                    message: "wrong token",
+                    status: grpc.status.INTERNAL
+                });
+            }
+            console.log("buy - internal error");
+            return callback({
+                code: 500,
+                message: "internal error",
+                status: grpc.status.INTERNAL
+            });
+        }
+
+        if (call.request.symbol!="EUR" && call.request.symbol!="USD"){
+            console.log("buy - invalid input");
+            return callback({
+                code: 400,
+                message: "symbol not correct",
+                status: grpc.status.INTERNAL
+            });
+        }
+
+        if (call.request.value<=0){
+            console.log("buy - invalid value");
+            return callback({
+                code: 400,
+                message: "value not correct",
+                status: grpc.status.INTERNAL
+            });
+        }
         
+        var to = call.request.symbol;
+        var from = 'EUR';
+        if (to =='EUR'){
+            from = 'USD';
+        }
+
+        const descriptorExchange = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/exchange.proto")))
+        const grpcClient = new descriptorExchange.greeter.Greeter("0.0.0.0:9000", grpc.credentials.createInsecure())
+    
+        grpcClient.exchange({value: call.request.value, from: to, to: from}, (err, data) => {
+            if (err){
+                console.log("Error with exchange")
+                data = 0
+            }
+            var valuesFrom = data.value
+            console.log(valuesFrom)
+            
+            updateCounts(call.request.email, from, call.request.symbol, valuesFrom, call.request.value) 
+            .then(response => {
+                console.log('buy - update counts into db');
+
+                saveTransaction(call.request.email, from, call.request.symbol, call.request.value, data.rate)
+                .then(response => {
+                    console.log('save buy transaction into db');
+                    return callback();
+                })
+                .catch(error => {
+                    console.log("buy - internal error with db");
+                    return callback({
+                        code: 500,
+                        message: "internal error with db",
+                        status: grpc.status.INTERNAL
+                    });
+                });
+            })
+            .catch(error => {
+                if (error.code==22012){
+                    console.log("buy - not enought");
+                    return callback({
+                        code: 400,
+                        message: "user not have enought for buy",
+                        status: grpc.status.INTERNAL
+                    });
+                }
+                else{
+                    console.log("buy - internal error with db");
+                    return callback({
+                        code: 500,
+                        message: "internal error with db",
+                        status: grpc.status.INTERNAL
+                    });
+                }
+            });
+        })
     },
 
     listTransactions: (call, callback) =>{
         
     }
 }
+
+
 
 /** avvio users grpc server */
 const descriptorUsers = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/users.proto")))
