@@ -77,6 +77,49 @@ function getPasswordAndSaltOfUser(email){
     })
 }
 
+/** UPDATE COUNT - aggiornamento valore del conto */
+function updateCount(email, symbol, value){
+    return new Promise(function(resolve, reject) {
+        var query = 'UPDATE users SET '+symbol+' = '+value+
+            '+(SELECT '+symbol+' FROM users WHERE email=\''+email+'\' FOR UPDATE)'+
+            'WHERE email=\''+email+'\'';
+        console.log(query);
+        pool.query(query, (error, results) => {
+            if (error) {
+                console.log(error);
+                reject(error);
+            }
+            else{
+                console.log('update count into db');
+            }
+            resolve(results);
+        })
+    })
+}
+
+/** SAVE TRANSACTION - salvataggio dati della transazione sul db*/
+function saveTransaction(email, to, from, value){
+    return new Promise(function(resolve, reject) {
+
+        var query = 'INSERT INTO transaction (mail, "to", "from", value) VALUES ('
+            +'\''+email+'\', '
+            +'\'{'+to+'}\', '
+            +'\'{'+from+'}\', '
+            +''+value+')'; 
+        console.log(query);
+        pool.query(query, (error, results) => {
+            if (error) {
+                console.log(error);
+                reject(error);
+            }
+            else{
+                console.log('user transaction into db');
+            }
+            resolve(results);
+        })
+    })
+}
+
 
 
 /** CREATE TOKEN - crea il il token JWT partendo dalla mail dell'utente*/
@@ -233,10 +276,10 @@ const implementations = {
                     status: grpc.status.INTERNAL
                 });
             }
-            console.log("refreshToken - internal error with db");
+            console.log("refreshToken - internal error");
             return callback({
                 code: 500,
-                message: "internal error with db",
+                message: "internal error",
                 status: grpc.status.INTERNAL
             });
         }
@@ -256,6 +299,90 @@ const implementations = {
             token: token,
             maxAge: maxAge
         })
+    },
+
+    /** DEPOSIT - deposito sul conto dell'utente di una somma nella valuta scelta*/
+    deposit: (call, callback) =>{
+        if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token){
+            console.log("deposit - invalid input");
+            return callback({
+                code: 400,
+                message: "one or more empty input",
+                status: grpc.status.INTERNAL
+            });
+        }
+
+        try {
+            jwt.verify(call.request.token, jwtKey)
+        } catch (e) {
+            if (e instanceof jwt.JsonWebTokenError) {
+                console.log("deposit - wrong token");
+                return callback({
+                    code: 401,
+                    message: "wrong token",
+                    status: grpc.status.INTERNAL
+                });
+            }
+            console.log("deposit - internal error");
+            return callback({
+                code: 500,
+                message: "internal error",
+                status: grpc.status.INTERNAL
+            });
+        }
+
+        if (call.request.symbol!="EUR" && call.request.symbol!="USD"){
+            console.log("deposit - invalid input");
+            return callback({
+                code: 400,
+                message: "symbol not correct",
+                status: grpc.status.INTERNAL
+            });
+        }
+
+        if (call.request.value<=0){
+            console.log("deposit - invalid value");
+            return callback({
+                code: 400,
+                message: "value not correct",
+                status: grpc.status.INTERNAL
+            });
+        }
+
+        updateCount(call.request.email, call.request.symbol, call.request.value)
+        .catch(error => {
+            console.log("login - internal error with db");
+            return callback({
+                code: 500,
+                message: "internal error with db",
+                status: grpc.status.INTERNAL
+            });
+        });
+
+        saveTransaction(call.request.email, call.request.symbol, 'IBAN', call.request.value)
+        .catch(error => {
+            console.log("login - internal error with db");
+            return callback({
+                code: 500,
+                message: "internal error with db",
+                status: grpc.status.INTERNAL
+            });
+        });
+
+        return callback()
+    },
+
+    /** WITHDRAW - prelievo dal conto dell'utente di una somma nella valuta scelta*/
+    withdraw: (call, callback) =>{
+        
+    },
+
+    buy: (call, callback) =>{
+        
+    },
+
+    listTransactions: (call, callback) =>{
+        
     }
 }
 
