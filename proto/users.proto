@@ -3,17 +3,30 @@ syntax = "proto3";
 package greeter;
 
 service Greeter {
-    rpc signup (signUpRequest) returns (signUpReply) {}
+    /* gestione utente*/
+    rpc signup (signupRequest) returns (tokenReply) {}
+    rpc login (loginRequest) returns (tokenReply) {}
+    rpc refreshToken (refreshTokenRequest) returns (tokenReply) {}
 }
 
-message signUpRequest {
+message signupRequest {
     string email = 1;
     string password = 2;
     string name = 3;
     string iban = 4;
 }
 
-message signUpReply {
+message tokenReply {
     string token = 1;
     int32 maxAge = 2;
+}
+
+message loginRequest {
+    string email = 1;
+    string password = 2;
+}
+
+message refreshTokenRequest {
+    string email = 1;
+    string token = 2;
 }
