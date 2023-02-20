@@ -10,20 +10,26 @@ const grpcClient = new descriptor.greeter.Greeter("0.0.0.0:9001", grpc.credentia
 
 grpcClient.login({email: "bho@nonso.it", password: "password"}, (err, data) => {
     console.log({ err, data })
-})*/
+})
 
-/*grpcClient.refreshToken({email: "bho@nonso.it", token: ""}, (err, data) => {
+rpcClient.refreshToken({email: "bho@nonso.it", token: ""}, (err, data) => {
     console.log({ err, data })
 })
 
-grpcClient.deposit({email: "bho@nonso.it", value : 100, symbol : "USD", token: "eyJh"}, (err, data) => {
+grpcClient.deposit({email: "bho@nonso.it", value : 100, symbol : "EUR", token: "eyJh"}, (err, data) => {
   console.log({ err, data })
 })
 
-grpcClient.withdraw({email: "bho@nonso.it", value : 100, symbol : "USD", token: "eyJh"}, (err, data) => {
+grpcClient.withdraw({email: "bho@nonso.it", value : 5, symbol : "EUR", token: "eyJh"}, (err, data) => {
   console.log({ err, data })
+})
+
+grpcClient.buy({email: "bho@nonso.it", value : 80, symbol : "USD", token: "eyJh"}, (err, data) => {
+  console.log({ err, data })
+})
+
+grpcClient.listTransactions({email: "bho@nonso.it", to: "EUR", valueMax: 6, token: "eyJh"}, (err, data) => {
+  //var ris = JSON.parse(data.response);
+  var ris = data;
+  console.log({err, ris});
 })*/
-
-grpcClient.buy({email: "bho@nonso.it", value : 10, symbol : "USD", token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtYWlsIjoiYmhvQG5vbnNvLml0IiwiaWF0IjoxNjc2NjQ5NDc4LCJleHAiOjE2NzY2NDk3Nzh9.Jc4IF-PjqIBPa14dVfC2_4CxfXDTsRFq8PaREVeEJnA"}, (err, data) => {
-  console.log({ err, data })
-})
