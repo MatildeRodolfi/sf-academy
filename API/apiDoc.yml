@@ -1,0 +1,285 @@
+swagger: "2.0"
+cors: "cors"
+host: "localhost:80"
+basePath: "/v2"
+info:
+  description: "piattaforma che consenta agli utenti autenticati di simulare l'acquisto di dollari in cambio di euro e viceversa"
+  version: "1.0.0"
+  title: "Exchange"
+tags:
+  - name: "user"
+    description: "Operations about user"
+  - name: "transaction"
+    description: "Create and view transaction"
+schemes:
+  - "https"
+  - "http"
+paths:
+  /signup:
+    post:
+      tags:
+        - "user"
+      summary: "Create user"
+      description: ""
+      operationId: "signup"
+      produces:
+        - "application/xml"
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Created user"
+          schema:
+            $ref: "#/definitions/newUser"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            items:
+              $ref: "#/definitions/token"
+        400:
+          description: "Error"
+          schema:
+            items:
+              $ref: "#/definitions/errorDescription"
+  /login:
+    post:
+      tags:
+        - "user"
+      summary: "login"
+      description: ""
+      operationId: "login"
+      produces:
+        - "application/xml"
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Login"
+          schema:
+            $ref: "#/definitions/userLogin"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            items:
+              $ref: "#/definitions/token"
+        400:
+          description: "Error"
+          schema:
+            items:
+              $ref: "#/definitions/errorDescription"
+  /refreshToken:
+    post:
+      tags:
+        - "user"
+      summary: "refresh Token"
+      description: ""
+      operationId: "refreshToken"
+      produces:
+        - "application/xml"
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "refreshToken"
+          schema:
+            $ref: "#/definitions/refreshToken"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            items:
+              $ref: "#/definitions/token"
+        400:
+          description: "Error"
+          schema:
+            items:
+              $ref: "#/definitions/errorDescription"
+  /deposit:
+    post:
+      tags:
+        - "transaction"
+      summary: "deposit"
+      description: ""
+      operationId: "deposit"
+      produces:
+        - "application/xml"
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "transactionRequest"
+          schema:
+            $ref: "#/definitions/transactionRequest"
+      responses:
+        200:
+          description: "successful operation"
+        400:
+          description: "Error"
+          schema:
+            items:
+              $ref: "#/definitions/errorDescription"
+  /withdraw:
+    post:
+      tags:
+        - "transaction"
+      summary: "withdraw"
+      description: ""
+      operationId: "withdraw"
+      produces:
+        - "application/xml"
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "transactionRequest"
+          schema:
+            $ref: "#/definitions/transactionRequest"
+      responses:
+        200:
+          description: "successful operation"
+        400:
+          description: "Error"
+          schema:
+            items:
+              $ref: "#/definitions/errorDescription"
+  /buy:
+    post:
+      tags:
+        - "transaction"
+      summary: "buy"
+      description: ""
+      operationId: "buy"
+      produces:
+        - "application/xml"
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "transactionRequest"
+          schema:
+            $ref: "#/definitions/transactionRequest"
+      responses:
+        200:
+          description: "successful operation"
+        400:
+          description: "Error"
+          schema:
+            items:
+              $ref: "#/definitions/errorDescription"
+  /listTransactions:
+    post:
+      tags:
+        - "transaction"
+      summary: "listTransactions"
+      description: ""
+      operationId: "listTransactions"
+      produces:
+        - "application/xml"
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "listRequest"
+          schema:
+            $ref: "#/definitions/listRequest"
+      responses:
+        200:
+          description: "successful operation"
+        400:
+          description: "Error"
+          schema:
+            items:
+              $ref: "#/definitions/errorDescription"
+  
+securityDefinitions:
+  petstore_auth:
+    type: "oauth2"
+    authorizationUrl: "http://petstore.swagger.io/oauth/dialog"
+    flow: "implicit"
+    scopes:
+      write:pets: "modify pets in your account"
+      read:pets: "read your pets"
+  api_key:
+    type: "apiKey"
+    name: "api_key"
+    in: "header"
+definitions:
+  newUser:
+    type: "object"
+    properties:
+      email:
+        type: "string"
+      password:
+        type: "string"
+      name:
+        type: "string"
+      iban:
+        type: "string"
+  userLogin:
+    type: "object"
+    properties:
+      email:
+        type: "string"
+      password:
+        type: "string"
+  refreshToken:
+    type: "object"
+    properties:
+      email:
+        type: "string"
+      token:
+        type: "string"
+  token:
+    type: "object"
+    properties:
+      token:
+        type: "string"
+      maxAge:
+        type: "integer"
+        format: "int32"
+  errorDescription:
+    type: "object"
+    properties:
+      details:
+        type: "string"
+  transactionRequest:
+    type: "object"
+    properties:
+      email: 
+        type: "string"
+      value:
+        type: "number"
+        format: "float"
+      symbol:
+        type: "string"
+      token:
+        type: "string"
+  listRequest:
+    type: "object"
+    properties:
+      email: 
+        type: "string"
+      from:
+        type: "string"
+      to:
+        type: "string"
+      valueMin:
+        type: "number"
+        format: "float"
+      valueMax:
+        type: "number"
+        format: "float"
+      dateMin:
+        type: "string"
+      dateMax:
+        type: "string"
+      rateMin:
+        type: "number"
+        format: "float"  
+      rateMax:
+        type: "number"
+        format: "float"
+      token:
+        type: "string"

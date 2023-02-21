@@ -53,8 +53,8 @@ message listRequest {
     optional string to = 3;
     optional float valueMin = 4;
     optional float valueMax = 5;
-    optional float dateMin = 6;
-    optional float dateMax = 7;
+    optional string dateMin = 6;
+    optional string dateMax = 7;
     optional float rateMin = 8;
     optional float rateMax = 9;
     string token = 10;

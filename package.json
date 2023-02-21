@@ -4,9 +4,11 @@
   "description": "piattaforma per l'acquisto e lo scambio di dollari ed euro",
   "main": "index.js",
   "scripts": {
+    "build": "node ./frontend/build.js",
     "start-exchange": "node ./exchange/exchange.js",
     "start-users": "node ./users/users.js",
-    "start-api": "node ./api/api.js"
+    "start-api": "node ./api/api.js",
+    "start-frontend": "node ./frontend/client.js"
   },
   "repository": {
     "type": "git",
@@ -23,10 +25,15 @@
     "@grpc/proto-loader": "^0.7.5",
     "crypto": "^1.0.1",
     "express": "^4.18.2",
+    "express-openapi": "^12.1.0",
+    "fetch-openapi": "^12.1.0",
+    "fs-extra": "^11.1.0",
+    "isomorphic-fetch": "^3.0.0",
     "jsonwebtoken": "^9.0.0",
     "pg": "^8.9.0",
     "xhr2": "^0.2.1",
     "xml-js": "^1.6.11",
-    "xml2js": "^0.4.23"
+    "xml2js": "^0.4.23",
+    "yamljs": "^0.3.0"
   }
 }

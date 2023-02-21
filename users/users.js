@@ -1,4 +1,4 @@
-/*TODO crere un saveTransaction+updatecount atomici
+/*TODO creare un saveTransaction+updatecount atomici
 TODO trovare buil-in Node module for crypto*/
 
 
@@ -24,8 +24,8 @@ function hashingPassword(password) {
 
 /** VALID PASSWORD - verifica che la pw inserita sia corretta*/
 function validPassword (password, hash, salt) { 
-    var newhash = crypto.pbkdf2Sync(password, salt, 1000, 64, `sha512`).toString(`hex`); 
-    return newhash === hash; 
+    var newhash = crypto.pbkdf2Sync(password, salt, 1000, 64, `sha512`).toString(`hex`);
+    return newhash == hash; 
 }; 
 
 
@@ -263,7 +263,15 @@ const implementations = {
         
         getPasswordAndSaltOfUser(call.request.email)
         .then(response => {
-            
+            if (!response[0]){
+                console.log("login - wrong user");
+                return callback({
+                    code: 401,
+                    message: "wrong user",
+                    status: grpc.status.INTERNAL
+                });
+            }
+
             var pw = response[0].password;
             var salt = response[0].salt;
 
@@ -317,7 +325,8 @@ const implementations = {
         }
     
         var payload
-        try {
+        //TODO eliminare
+        /*try {
             payload = jwt.verify(call.request.token, jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
@@ -334,7 +343,7 @@ const implementations = {
                 message: "internal error",
                 status: grpc.status.INTERNAL
             });
-        }
+        }*/
         const nowUnixSeconds = Math.round(Number(new Date()) / 1000)
         if (payload.exp - nowUnixSeconds > 30) {
             console.log("refreshToken - too early");
@@ -364,7 +373,8 @@ const implementations = {
             });
         }
 
-        try { 
+        //TODO eliminare
+        /*try { 
             jwt.verify(call.request.token, jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
@@ -381,7 +391,7 @@ const implementations = {
                 message: "internal error",
                 status: grpc.status.INTERNAL
             });
-        }
+        }*/
 
         if (call.request.symbol!="EUR" && call.request.symbol!="USD"){
             console.log("deposit - invalid input");
@@ -440,7 +450,8 @@ const implementations = {
             });
         }
         
-        try { 
+        //TODO eliminare
+        /*try { 
             jwt.verify(call.request.token, jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
@@ -457,7 +468,7 @@ const implementations = {
                 message: "internal error",
                 status: grpc.status.INTERNAL
             });
-        }
+        }*/
 
         if (call.request.symbol!="EUR" && call.request.symbol!="USD"){
             console.log("withdraw - invalid input");
@@ -544,7 +555,8 @@ const implementations = {
             });
         }
 
-        try {
+        //TODO eliminare
+        /*try {
             jwt.verify(call.request.token, jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
@@ -561,7 +573,7 @@ const implementations = {
                 message: "internal error",
                 status: grpc.status.INTERNAL
             });
-        }
+        }*/
         
         var to = call.request.symbol;
         var from = 'EUR';
@@ -679,7 +691,8 @@ const implementations = {
             });
         }
 
-        try {
+        //TODO eliminare
+        /*try {
             jwt.verify(call.request.token, jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
@@ -696,13 +709,11 @@ const implementations = {
                 message: "internal error",
                 status: grpc.status.INTERNAL
             });
-        }
+        }*/
 
         findTransactions(call.request.email, call.request.from, call.request.to, call.request.valueMin, call.request.valueMax, call.request.dateMin, call.request.dateMax, call.request.rateMin, call.request.rateMax)
         .then(response => {
             console.log('listTransactions - get list from db');
-
-            console.log(response);
             return callback(null, {
                 response: JSON.stringify(response)
             });
