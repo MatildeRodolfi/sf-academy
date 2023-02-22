@@ -1,0 +1,53 @@
+/*----Counts---*/
+.countsDiv {
+    height: 30vh;
+}
+
+.count{
+    font-size: 30px;
+}
+
+.marginLeft{
+    margin-left: 10px;
+}
+
+/*---transactionTable---*/
+.transactionTable{
+    border-collapse: collapse;
+    width: 96vw;
+    margin: 0 2vw 0 2vw;
+    background-color: var(--background);
+}
+
+.transactionTable td, .transactionTable th {
+    border: 1px solid var(--border-dark);
+    padding: 8px;
+}
+
+.transactionTable tr:nth-child(even){
+    background-color: white;
+}
+
+.transactionTable th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: var(--button-background);
+}
+
+.tableTitle{
+    margin: 0;
+    padding: 7px;
+    vertical-align: inherit;
+    font-weight: bold;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.filterDiv{
+    margin: 5vw 2vw 0 2vw;
+    margin-left: auto;
+}

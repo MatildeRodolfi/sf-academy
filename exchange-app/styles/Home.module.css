@@ -1,0 +1,10 @@
+/*---Card---*/
+.linkDiv{
+  width: 100%;
+  border-top: 1px solid var(--border-dark);
+  margin-top: 3vh;
+}
+
+.coloredText{
+  color: var(--text-color-dark);
+}

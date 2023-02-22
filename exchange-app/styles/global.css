@@ -1,0 +1,44 @@
+:root{
+  --background: #EDF2FB;
+  --shadow: rgba(0, 0, 0, 0.220);
+  --border-light: #E2EAFC;
+  --border-dark: #CCDBFD;
+  --button-background: #b3c9ff;
+  --button-background-hover: #99b8ff;
+  --text-color-dark: #3370ff;
+}
+
+html, body {
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  line-height: 1.6;
+  font-size: 18px;
+}
+
+button {
+  background-color: var(--button-background);
+  border-radius: 8px;
+  border-style: none;
+  width: auto;
+  height: 5vh;
+  font-size: 14px;
+  letter-spacing: -.005em;
+  padding: 0 1em 0 1em;
+  margin: 0 0 0 1.5em;
+}
+
+button:hover{
+  background-color: var(--button-background-hover);
+  cursor: pointer;
+}
+
+input{
+  padding: 0 16px;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  border-radius: 6px;
+  border: none;
+}
