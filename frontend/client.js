@@ -1,4 +1,7 @@
-/*TODO capire perchè quando conpila exchangeApi compila sbagliato*/
+/*TODO capire perchè quando conpila exchangeApi*/
+
+/** ---file di prova per testare il funzionamento delle APIs */
+
 require("isomorphic-fetch")
 
 const client = require("../api/exchangeApi.js")({
@@ -54,5 +57,5 @@ const client = require("../api/exchangeApi.js")({
         }
         })
         .then(res => res.json())
-        .then(console.log)
+        .then(res => console.log(res))
         .catch(console.error)

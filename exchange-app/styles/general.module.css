@@ -18,6 +18,13 @@
     margin: 10px 0 0 0;
 }
 
+.onLeftX{
+    display: flex;
+    align-items: center;
+    justify-content:left;
+    margin: 10px 0 0 0;
+}
+
 .trasparentButton{
     background-color: transparent;
 }
@@ -37,6 +44,18 @@
     width: 100%;
     margin: 10px 0 0 0;
     text-align: center;
+}
+
+.error{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: 2px 0 0 0;
+    text-align: center;
+    font-size: 13px;
+    color: red;
+    font-weight: bold;
 }
 
 /*----Common element---*/

@@ -1,5 +1,4 @@
 swagger: "2.0"
-cors: "cors"
 host: "localhost:80"
 basePath: "/v2"
 info:
@@ -91,6 +90,33 @@ paths:
           schema:
             items:
               $ref: "#/definitions/token"
+        400:
+          description: "Error"
+          schema:
+            items:
+              $ref: "#/definitions/errorDescription"
+  /getCounts:
+    post:
+      tags:
+        - "user"
+      summary: "getCounts"
+      description: ""
+      operationId: "getCounts"
+      produces:
+        - "application/xml"
+        - "application/json"
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "getCounts"
+          schema:
+            $ref: "#/definitions/getCountsRequest"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            items:
+              $ref: "#/definitions/getCountsResponse"
         400:
           description: "Error"
           schema:
@@ -192,19 +218,6 @@ paths:
           schema:
             items:
               $ref: "#/definitions/errorDescription"
-  
-securityDefinitions:
-  petstore_auth:
-    type: "oauth2"
-    authorizationUrl: "http://petstore.swagger.io/oauth/dialog"
-    flow: "implicit"
-    scopes:
-      write:pets: "modify pets in your account"
-      read:pets: "read your pets"
-  api_key:
-    type: "apiKey"
-    name: "api_key"
-    in: "header"
 definitions:
   newUser:
     type: "object"
@@ -239,6 +252,21 @@ definitions:
       maxAge:
         type: "integer"
         format: "int32"
+  getCountsRequest:
+    type: "object"
+    properties:
+      email:
+        type: "string"
+      token:
+        type: "string"
+  getCountsResponse:
+    type: "object"
+    properties:
+      EUR: 
+        type: "string"
+      USD: 
+        type: "number"
+        format: "float"
   errorDescription:
     type: "object"
     properties:

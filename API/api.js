@@ -6,6 +6,7 @@ const grpcClient = new descriptor.greeter.Greeter("0.0.0.0:9001", grpc.credentia
 const express = require("express")
 const bodyParser = require("body-parser")
 const { initialize } = require("express-openapi")
+const cors = require('cors');
 
 const operations = {
   signup: (req, res, next) => {
@@ -57,6 +58,25 @@ const operations = {
         console.log("refreshToken ok")
         return res.status(200).json({
           data
+        })
+      }
+    })
+  },
+
+  getCounts: (req, res, next) => {
+    grpcClient.getCounts({email: req.body.email, token: req.body.token}, (err, data) => {
+      if (err){
+        console.log(err.details)
+        var details = err.details
+        return res.status(400).json({
+          details
+        })
+      }
+      else {
+        console.log("getCounts ok")
+        return res.status(200).json({
+          eur: data.eur,
+          usd: data.usd
         })
       }
     })
@@ -138,6 +158,9 @@ const operations = {
 
 const app = express()
 
+app.use(cors({
+  origin: '*'
+}));
 app.use(bodyParser.json())
 
 initialize({

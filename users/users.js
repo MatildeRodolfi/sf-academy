@@ -81,6 +81,21 @@ function getPasswordAndSaltOfUser(email){
     })
 }
 
+/** GET PASSWORD AND SALT OF USER - restituisce valori dei conti dell'utente dal db*/
+function getCountsValue(email){
+    return new Promise(function(resolve, reject) {
+
+        var query = 'SELECT eur, usd FROM users WHERE email=\''+email+'\''; 
+        pool.query(query, (error, results) => {
+            if (error) {
+                reject(error);
+                console.log(error);
+            }
+            resolve(results.rows);
+        })
+    })
+}
+
 /** UPDATE COUNT - aggiornamento valore del conto */
 function updateCount(email, symbol, value){
     return new Promise(function(resolve, reject) {
@@ -325,8 +340,7 @@ const implementations = {
         }
     
         var payload
-        //TODO eliminare
-        /*try {
+        try {
             payload = jwt.verify(call.request.token, jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
@@ -343,7 +357,7 @@ const implementations = {
                 message: "internal error",
                 status: grpc.status.INTERNAL
             });
-        }*/
+        }
         const nowUnixSeconds = Math.round(Number(new Date()) / 1000)
         if (payload.exp - nowUnixSeconds > 30) {
             console.log("refreshToken - too early");
@@ -362,6 +376,66 @@ const implementations = {
         })
     },
 
+    /** GET COUNTS - restituisce i valori dei conti dell'utente*/
+    getCounts: (call, callback) =>{
+        if (!call.request.email) {
+            console.log("getCounts - empty email");
+            return callback({
+                code: 400,
+                message: "empty email",
+                status: grpc.status.INTERNAL
+            });
+        }
+
+        if (!call.request.token) {
+            console.log("getCounts - empty token");
+            return callback({
+                code: 401,
+                message: "empty token",
+                status: grpc.status.INTERNAL
+            });
+        }
+    
+        var payload
+        try {
+            payload = jwt.verify(call.request.token, jwtKey)
+        } catch (e) {
+            if (e instanceof jwt.JsonWebTokenError) {
+                console.log("refreshToken - wrong token");
+                return callback({
+                    code: 401,
+                    message: "wrong token",
+                    status: grpc.status.INTERNAL
+                });
+            }
+            console.log("refreshToken - internal error");
+            return callback({
+                code: 500,
+                message: "internal error",
+                status: grpc.status.INTERNAL
+            });
+        }
+        
+        getCountsValue(call.request.email)
+        .then(response => {
+
+            console.log('getCounts - get counts value from db');
+            
+            return callback(null, {
+                eur: response[0].eur,
+                usd: response[0].usd
+            })
+        })
+        .catch(error => {
+            console.log("getCounts - internal error with db");
+            return callback({
+                code: 500,
+                message: "internal error with db",
+                status: grpc.status.INTERNAL
+            });
+        });
+    },
+
     /** DEPOSIT - deposito sul conto dell'utente di una somma nella valuta scelta*/
     deposit: (call, callback) =>{
         if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token){
@@ -373,8 +447,7 @@ const implementations = {
             });
         }
 
-        //TODO eliminare
-        /*try { 
+        try { 
             jwt.verify(call.request.token, jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
@@ -391,7 +464,7 @@ const implementations = {
                 message: "internal error",
                 status: grpc.status.INTERNAL
             });
-        }*/
+        }
 
         if (call.request.symbol!="EUR" && call.request.symbol!="USD"){
             console.log("deposit - invalid input");
@@ -450,8 +523,7 @@ const implementations = {
             });
         }
         
-        //TODO eliminare
-        /*try { 
+        try { 
             jwt.verify(call.request.token, jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
@@ -468,7 +540,7 @@ const implementations = {
                 message: "internal error",
                 status: grpc.status.INTERNAL
             });
-        }*/
+        }
 
         if (call.request.symbol!="EUR" && call.request.symbol!="USD"){
             console.log("withdraw - invalid input");
@@ -555,8 +627,7 @@ const implementations = {
             });
         }
 
-        //TODO eliminare
-        /*try {
+        try {
             jwt.verify(call.request.token, jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
@@ -573,7 +644,7 @@ const implementations = {
                 message: "internal error",
                 status: grpc.status.INTERNAL
             });
-        }*/
+        }
         
         var to = call.request.symbol;
         var from = 'EUR';
@@ -691,8 +762,7 @@ const implementations = {
             });
         }
 
-        //TODO eliminare
-        /*try {
+        try {
             jwt.verify(call.request.token, jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
@@ -709,7 +779,7 @@ const implementations = {
                 message: "internal error",
                 status: grpc.status.INTERNAL
             });
-        }*/
+        }
 
         findTransactions(call.request.email, call.request.from, call.request.to, call.request.valueMin, call.request.valueMax, call.request.dateMin, call.request.dateMax, call.request.rateMin, call.request.rateMax)
         .then(response => {
