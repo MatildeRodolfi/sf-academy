@@ -10,7 +10,7 @@ const { join } = require("path")
 const { promisify } = require("util")
 const PORT = 9001
 const jwtKey = "dF3OzQ49J0"
-const jwtExpirySeconds = 300
+const jwtExpirySeconds = 3000
 
 
 

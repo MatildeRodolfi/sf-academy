@@ -83,6 +83,7 @@ const operations = {
   },
 
   deposit: (req, res, next) => {
+    console.log("deposit acquired")
     grpcClient.deposit({email: req.body.email, value : req.body.value, symbol : req.body.symbol, token : req.body.token}, (err, data) => {
       if (err){
         console.log("deposit error: "+err.details)
@@ -153,7 +154,8 @@ const operations = {
         })
       }
     })
-  }
+  },
+
 }
 
 const app = express()
