@@ -1,4 +1,4 @@
-# exchenge
+# Exchenge App
 
 ## Setup for backend
 run `npm install` in the project folder
@@ -7,18 +7,20 @@ run `npm run build` to build the api interface
 ## Setup for frontend
 run `npm install` in the '\exchange-app' folder
 
-## Execute backend
+## Execute backend in dev
+open 3 terminals, execute:
+- exchange microservice: `npm run dev-exchange`
+- users microservice: `npm run dev-users`
+- api microservice: `npm run dev-api`
+
+## Execute backend in prod
 open 3 terminals, execute:
 - exchange microservice: `npm run exchange`
 - users microservice: `npm run users`
 - api microservice: `npm run api`
 
 ## Execute frontend in dev
-open 1 terminal, execute:
-- `npm run dev`
-in the '\exchange-app' folder
+run `npm run dev` in the '\exchange-app' folder
 
-## Execute frontend
-open 1 terminal, execute:
-- `npm run start`
-in the '\exchange-app' folder
+## Execute frontend in prod
+run `npm run start` in the '\exchange-app' folder

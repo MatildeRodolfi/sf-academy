@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=my_user
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=exchange
+    volumes: 
+      - ./db/data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/create_tables.sql
+
+  exchange:
+    restart: always
+    build:
+      context: .
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: npm run exchange
+
+  users:
+    restart: always
+    build:
+      context: .
+    depends_on:
+      - db
+      - exchange
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: my_user
+      DB_PASSWORD: root
+      DB_NAME: exchange
+      EXCHANGE_HOST: exchange
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: npm run users
+
+  api:
+    restart: always
+    build:
+      context: .
+    depends_on:
+      - users
+    ports:
+      - 80:80
+    environment:
+      USERS_HOST: users
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: npm run api
+
+volumes:
+  db:
+    driver: local

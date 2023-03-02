@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  frontend:
+    restart: always
+    build:
+      context: .
+    ports:
+      - 3000:3000
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: npm run start

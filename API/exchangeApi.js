@@ -2,9 +2,9 @@
 module.exports = createApi;
 function createApi(options) {
   const basePath = '/v2';
-  const endpoint = options.endpoint || 'https://localhost:80';
+  const endpoint = options.endpoint || 'https://0.0.0.0:80';
   const cors = !!options.cors;
-  const mode = cors ? 'cors' : 'cors';
+  const mode = cors ? 'cors' : 'basic';
   const buildQuery = (obj) => {
     return Object.keys(obj)
       .filter(key => typeof obj[key] !== 'undefined')

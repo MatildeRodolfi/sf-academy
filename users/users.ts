@@ -1,194 +1,220 @@
-var protoLoader = require("@grpc/proto-loader");
-var grpc = require("@grpc/grpc-js");
-var jwt = require("jsonwebtoken");
-var crypt = require("crypto");
-var join = require("path").join;
-var promisify = require("util").promisify;
-var PORT = 9001;
-var jwtKey = "dF3OzQ49J0";
-var jwtExpirySeconds = 3000;
-var config = require('../config');
+const protoLoader = require("@grpc/proto-loader");
+const grpc = require("@grpc/grpc-js");
+const jwt = require("jsonwebtoken")
+const crypt = require("crypto")
+const { join } = require("path")
+const { promisify } = require("util")
+const PORT = 9001
+const jwtKey = "dF3OzQ49J0"
+const jwtExpirySeconds = 3000
+const config = require('../config');
+
+
 /** HASHING PASSWORD - cripta la pw e restituisce hash e salt*/
-function hashingPassword(password) {
-    var salt = crypt.randomBytes(16).toString('hex');
-    var pw = crypt.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
-    return { salt: salt, pw: pw };
-}
-;
+function hashingPassword(password:string) { 
+    var salt:string = crypt.randomBytes(16).toString('hex'); 
+    var pw:string = crypt.pbkdf2Sync(password, salt, 1000, 64, `sha512`).toString(`hex`); 
+
+    return {salt, pw}
+}; 
+
 /** VALID PASSWORD - verifica che la pw inserita sia corretta*/
-function validPassword(password, hash, salt) {
-    var newhash = crypt.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
-    return newhash == hash;
-}
-;
+function validPassword (password:string, hash:string, salt:string) { 
+    var newhash:string = crypt.pbkdf2Sync(password, salt, 1000, 64, `sha512`).toString(`hex`);
+    return newhash == hash; 
+}; 
+
+
+
 /** dati di accesso alla db */
-var Pool = require('pg').Pool;
+const Pool = require('pg').Pool
 console.log(config.db);
-var pool = new Pool(config.db);
+const pool = new Pool(config.db);
+
 /** SAVE USER - salvataggio dati utente su db*/
-function saveUser(email, name, iban, salt, pw) {
-    return new Promise(function (resolve, reject) {
+function saveUser(email:string, name:string, iban:string, salt:string, pw:string){
+    return new Promise(function(resolve, reject) {
+
         var query = 'INSERT INTO users (email, name, iban, password, salt) VALUES ('
-            + '\'' + email + '\', '
-            + '\'' + name + '\', '
-            + '\'' + iban + '\', '
-            + '\'' + pw + '\', '
-            + '\'' + salt + '\')';
-        pool.query(query, function (error, results) {
+            +'\''+email+'\', '
+            +'\''+name+'\', '
+            +'\''+iban+'\', '
+            +'\''+pw+'\', '
+            +'\''+salt+'\')'; 
+        pool.query(query, (error, results) => {
             if (error) {
                 reject(error);
                 console.log(error);
             }
-            else {
+            else{
                 console.log('user save into db');
             }
             resolve(results);
-        });
-    });
+        })
+    })
 }
+
 /** GET PASSWORD AND SALT OF USER - restituisce hash e salt dell'utente dal db*/
-function getPasswordAndSaltOfUser(email) {
-    return new Promise(function (resolve, reject) {
-        var query = 'SELECT password, salt FROM users WHERE email=\'' + email + '\'';
-        pool.query(query, function (error, results) {
+function getPasswordAndSaltOfUser(email:string){
+    return new Promise(function(resolve, reject) {
+
+        var query = 'SELECT password, salt FROM users WHERE email=\''+email+'\''; 
+        pool.query(query, (error, results) => {
             if (error) {
                 reject(error);
                 console.log(error);
             }
-            else {
+            else{
                 console.log('get user\'s hash and salt from db');
             }
             resolve(results.rows);
-        });
-    });
+        })
+    })
 }
+
 /** GET PASSWORD AND SALT OF USER - restituisce valori dei conti dell'utente dal db*/
-function getCountsValue(email) {
-    return new Promise(function (resolve, reject) {
-        var query = 'SELECT eur, usd FROM users WHERE email=\'' + email + '\'';
-        pool.query(query, function (error, results) {
+function getCountsValue(email:string){
+    return new Promise(function(resolve, reject) {
+
+        var query = 'SELECT eur, usd FROM users WHERE email=\''+email+'\''; 
+        pool.query(query, (error, results) => {
             if (error) {
                 reject(error);
                 console.log(error);
             }
             resolve(results.rows);
-        });
-    });
+        })
+    })
 }
+
 /** UPDATE COUNT - aggiornamento valore del conto */
-function updateCount(email, symbol, value) {
-    return new Promise(function (resolve, reject) {
-        var query = ' DO $$ ' +
+function updateCount(email:string, symbol:string, value:number){
+    return new Promise(function(resolve, reject) {
+        var query =  ' DO $$ '+
             'BEGIN ' +
-            'IF (SELECT ' + symbol + ' FROM users WHERE email=\'' + email + '\')>=' + value * (-1) + ' THEN ' +
-            'UPDATE users SET ' + symbol + ' = ' + value +
-            '+(SELECT ' + symbol + ' FROM users WHERE email=\'' + email + '\' FOR UPDATE)' +
-            'WHERE email=\'' + email + '\';' +
-            'ELSE ' +
-            'SELECT (1 / 0); ' +
-            'END IF;' +
+            'IF (SELECT '+symbol+' FROM users WHERE email=\''+email+'\')>='+value*(-1)+' THEN ' +
+            'UPDATE users SET '+symbol+' = '+value+
+            '+(SELECT '+symbol+' FROM users WHERE email=\''+email+'\' FOR UPDATE)'+
+            'WHERE email=\''+email+'\';'+
+            'ELSE '+
+            'SELECT (1 / 0); '+
+            'END IF;'+
             'END $$;';
-        pool.query(query, function (error, results) {
+        pool.query(query, (error, results) => {
             if (error) {
                 console.log(error);
                 reject(error);
             }
             resolve(results);
-        });
-    });
+        })
+    })
 }
+
 /** UPDATE COUNTS - aggiornamento valore di conti con passaggio tra uno e l'altro*/
-function updateCounts(email, from, to, valueFrom, valueTo) {
-    return new Promise(function (resolve, reject) {
-        var query = ' DO $$ ' +
+function updateCounts(email:string, from:string, to:string, valueFrom:number, valueTo:number){
+    return new Promise(function(resolve, reject) {
+        var query = ' DO $$ '+
             'BEGIN ' +
-            'IF (SELECT ' + from + ' FROM users WHERE email=\'' + email + '\')>=' + valueTo + ' THEN ' +
-            'UPDATE users SET ' +
-            to + ' = ' + valueTo + '+(SELECT ' + to + ' FROM users WHERE email=\'' + email + '\' FOR UPDATE), ' +
-            from + ' = -' + valueFrom + '+(SELECT ' + from + ' FROM users WHERE email=\'' + email + '\' FOR UPDATE) ' +
-            'WHERE email=\'' + email + '\';' +
-            'ELSE ' +
-            'SELECT (1 / 0); ' +
-            'END IF;' +
+            'IF (SELECT '+from+' FROM users WHERE email=\''+email+'\')>='+valueTo+' THEN ' +
+            'UPDATE users SET '+
+            to+' = '+valueTo+'+(SELECT '+to+' FROM users WHERE email=\''+email+'\' FOR UPDATE), '+
+            from+' = -'+valueFrom+'+(SELECT '+from+' FROM users WHERE email=\''+email+'\' FOR UPDATE) '+
+            'WHERE email=\''+email+'\';'+
+            'ELSE '+
+            'SELECT (1 / 0); '+
+            'END IF;'+
             'END $$;';
-        pool.query(query, function (error, results) {
+        pool.query(query, (error, results) => {
             if (error) {
                 console.log(error);
                 reject(error);
             }
             resolve(results);
-        });
-    });
+        })
+    })
 }
+
 /** SAVE TRANSACTION - salvataggio dati della transazione sul db*/
-function saveTransaction(email, from, to, value, rate) {
-    return new Promise(function (resolve, reject) {
+function saveTransaction(email:string, from:string, to:string, value:number, rate:number){
+    return new Promise(function(resolve, reject) {
+
         var query = 'INSERT INTO transactions (mail, "to", "from", value, date, rate) VALUES ('
-            + '\'' + email + '\', '
-            + '\'' + to + '\', '
-            + '\'' + from + '\', '
-            + '' + value + ', '
-            + 'current_timestamp, '
-            + '' + rate + ')';
-        pool.query(query, function (error, results) {
+            +'\''+email+'\', '
+            +'\''+to+'\', '
+            +'\''+from+'\', '
+            +''+value+', '
+            +'current_timestamp, '
+            +''+rate+')';
+        pool.query(query, (error, results) => {
             if (error) {
                 console.log(error);
                 reject(error);
             }
             resolve(results);
-        });
-    });
+        })
+    })
 }
+
 /** FIND TRANSACTIONS - estrazione transazione dell'utente che rispettano i filtri applicati*/
-function findTransactions(email, from, to, valueMin, valueMax, dateMin, dateMax, rateMin, rateMax) {
-    return new Promise(function (resolve, reject) {
+function findTransactions(email:string, from:string, to:string, valueMin:number, valueMax:number, dateMin:string, dateMax:string, rateMin:number, rateMax:number){
+    return new Promise(function(resolve, reject) {
         var query = 'SELECT * FROM transactions WHERE '
-            + 'mail=\'' + email + '\'';
-        if (from) {
-            query += ' AND transactions.from=\'' + from + '\'';
+            +'mail=\''+email+'\''
+        if (from){
+            query += ' AND transactions.from=\''+from+'\''
         }
-        if (to) {
-            query += ' AND transactions.to=\'' + to + '\'';
+        if (to){
+            query += ' AND transactions.to=\''+to+'\''
         }
-        if (valueMin) {
-            query += ' AND value>=\'' + valueMin + '\'';
+        if (valueMin){
+            query += ' AND value>=\''+valueMin+'\''
         }
-        if (valueMax) {
-            query += ' AND value<=\'' + valueMax + '\'';
+        if (valueMax){
+            query += ' AND value<=\''+valueMax+'\''
         }
-        if (dateMin) {
-            query += ' AND date>=\'' + dateMin + '\'';
+        if (dateMin){
+            query += ' AND date>=\''+dateMin+'\''
         }
-        if (dateMax) {
-            query += ' AND date<=\'' + dateMax + '\'';
+        if (dateMax){
+            query += ' AND date<=\''+dateMax+'\''
         }
-        if (rateMin) {
-            query += ' AND rate>=\'' + rateMin + '\'';
+        if (rateMin){
+            query += ' AND rate>=\''+rateMin+'\''
         }
-        if (rateMax) {
-            query += ' AND rate<=\'' + rateMax + '\'';
+        if (rateMax){
+            query += ' AND rate<=\''+rateMax+'\''
         }
-        pool.query(query, function (error, results) {
+
+        pool.query(query, (error, results) => {
             if (error) {
                 console.log(error);
                 reject(error);
             }
             resolve(results.rows);
-        });
-    });
+        })
+    })
 }
+
+
+
 /** CREATE TOKEN - crea il il token JWT partendo dalla mail dell'utente*/
-function createToken(mail) {
-    var token = jwt.sign({ mail: mail }, jwtKey, {
-        algorithm: "HS256",
-        expiresIn: jwtExpirySeconds
-    });
-    return { token: token, maxAge: jwtExpirySeconds * 1000 };
+function createToken(mail:string){
+    const token:string = jwt.sign({mail}, jwtKey, {
+		algorithm: "HS256",
+		expiresIn: jwtExpirySeconds,
+	})
+
+    return {token: token, maxAge: jwtExpirySeconds * 1000}
 }
-var implementations = {
+
+
+
+const implementations = {
+
     /** SIGNUP -  salva l'utente sul db e restituisce il token JWT*/
-    signup: function (call, callback) {
-        if (!call.request.email || !call.request.password || !call.request.name || !call.request.iban) {
+    signup: (call, callback) => {
+
+        if (!call.request.email || !call.request.password || !call.request.name || !call.request.iban){
             console.log("signup - invalid input");
             return callback({
                 code: 400,
@@ -196,16 +222,20 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        var _a = hashingPassword(call.request.password), salt = _a.salt, pw = _a.pw;
+
+        var {salt, pw} = hashingPassword(call.request.password);
+        
         saveUser(call.request.email, call.request.name, call.request.iban, salt, pw)
-            .then(function (response) {
-            var _a = createToken(call.request.email), token = _a.token, maxAge = _a.maxAge;
+        .then(response => {
+            var {token, maxAge}= createToken(call.request.email);
+
             return callback(null, {
                 token: token,
                 maxAge: maxAge
-            });
-        })["catch"](function (error) {
-            if (error.code == 23505) {
+            })
+        })
+        .catch(error => {
+            if (error.code==23505){
                 console.log("signup - duplicate email");
                 return callback({
                     code: 409,
@@ -213,7 +243,7 @@ var implementations = {
                     status: grpc.status.INTERNAL
                 });
             }
-            else {
+            else{
                 console.log("signup - internal error with db");
                 return callback({
                     code: 500,
@@ -221,11 +251,14 @@ var implementations = {
                     status: grpc.status.INTERNAL
                 });
             }
-        });
+            
+        })   
     },
+
     /** LOGIN -  controlla dati utente e restituisce il token JWT*/
-    login: function (call, callback) {
-        if (!call.request.email || !call.request.password) {
+    login: (call, callback) => {
+
+        if (!call.request.email || !call.request.password){
             console.log("login - invalid input");
             return callback({
                 code: 400,
@@ -233,9 +266,10 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
+        
         getPasswordAndSaltOfUser(call.request.email)
-            .then(function (response) {
-            if (!response[0]) {
+        .then(response => {
+            if (!response[0]){
                 console.log("login - wrong user");
                 return callback({
                     code: 401,
@@ -243,33 +277,41 @@ var implementations = {
                     status: grpc.status.INTERNAL
                 });
             }
-            var pw = response[0].password;
-            var salt = response[0].salt;
-            if (validPassword(call.request.password, pw, salt)) {
+
+            var pw:string = response[0].password;
+            var salt:string = response[0].salt;
+
+            if (validPassword(call.request.password, pw, salt)){
+
                 console.log("user authenticated");
-                var _a = createToken(call.request.email), token = _a.token, maxAge = _a.maxAge;
+                var {token, maxAge}= createToken(call.request.email);
+
                 return callback(null, {
                     token: token,
                     maxAge: maxAge
-                });
+                })
             }
+            
             console.log("login - wrong password");
             return callback({
                 code: 401,
                 message: "wrong password",
                 status: grpc.status.INTERNAL
             });
-        })["catch"](function (error) {
+            
+        })
+        .catch(error => {
             console.log("login - internal error with db");
             return callback({
                 code: 500,
                 message: "internal error with db",
                 status: grpc.status.INTERNAL
             });
-        });
+        })   
     },
+
     /** REFRESH TOKEN -  rigenera il token JWT, controllando se è un token corretto e che sia in scadenza*/
-    refreshToken: function (call, callback) {
+    refreshToken: (call, callback) =>{
         if (!call.request.email) {
             console.log("refreshToken - empty email");
             return callback({
@@ -278,6 +320,7 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
+
         if (!call.request.token) {
             console.log("refreshToken - empty token");
             return callback({
@@ -286,11 +329,11 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        var payload;
+    
+        var payload
         try {
-            payload = jwt.verify(call.request.token, jwtKey);
-        }
-        catch (e) {
+            payload = jwt.verify(call.request.token, jwtKey)
+        } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
                 console.log("refreshToken - wrong token");
                 return callback({
@@ -306,7 +349,7 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        var nowUnixSeconds = Math.round(Number(new Date()) / 1000);
+        const nowUnixSeconds = Math.round(Number(new Date()) / 1000)
         if (payload.exp - nowUnixSeconds > 30) {
             console.log("refreshToken - too early");
             return callback({
@@ -315,15 +358,17 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        var _a = createToken(call.request.email), token = _a.token, maxAge = _a.maxAge;
+    
+        var {token, maxAge} = createToken(call.request.email);
         console.log("token refreshed");
         return callback(null, {
             token: token,
             maxAge: maxAge
-        });
+        })
     },
+
     /** GET COUNTS - restituisce i valori dei conti dell'utente*/
-    getCounts: function (call, callback) {
+    getCounts: (call, callback) =>{
         if (!call.request.email) {
             console.log("getCounts - empty email");
             return callback({
@@ -332,6 +377,7 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
+
         if (!call.request.token) {
             console.log("getCounts - empty token");
             return callback({
@@ -340,11 +386,11 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        var payload;
+    
+        var payload
         try {
-            payload = jwt.verify(call.request.token, jwtKey);
-        }
-        catch (e) {
+            payload = jwt.verify(call.request.token, jwtKey)
+        } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
                 console.log("refreshToken - wrong token");
                 return callback({
@@ -360,14 +406,18 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
+        
         getCountsValue(call.request.email)
-            .then(function (response) {
+        .then(response => {
+
             console.log('getCounts - get counts value from db');
+            
             return callback(null, {
                 eur: response[0].eur,
                 usd: response[0].usd
-            });
-        })["catch"](function (error) {
+            })
+        })
+        .catch(error => {
             console.log("getCounts - internal error with db");
             return callback({
                 code: 500,
@@ -376,9 +426,10 @@ var implementations = {
             });
         });
     },
+
     /** DEPOSIT - deposito sul conto dell'utente di una somma nella valuta scelta*/
-    deposit: function (call, callback) {
-        if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token) {
+    deposit: (call, callback) =>{
+        if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token){
             console.log("deposit - invalid input");
             return callback({
                 code: 400,
@@ -386,10 +437,10 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        try {
-            jwt.verify(call.request.token, jwtKey);
-        }
-        catch (e) {
+
+        try { 
+            jwt.verify(call.request.token, jwtKey)
+        } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
                 console.log("deposit - wrong token");
                 return callback({
@@ -405,7 +456,8 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        if (call.request.symbol != "EUR" && call.request.symbol != "USD") {
+
+        if (call.request.symbol!="EUR" && call.request.symbol!="USD"){
             console.log("deposit - invalid input");
             return callback({
                 code: 400,
@@ -413,7 +465,8 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        if (call.request.value <= 0) {
+
+        if (call.request.value<=0){
             console.log("deposit - invalid value");
             return callback({
                 code: 400,
@@ -421,14 +474,17 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
+
         updateCount(call.request.email, call.request.symbol, call.request.value)
-            .then(function (response) {
+        .then(response => {
             console.log('deposit - update count into db');
+
             saveTransaction(call.request.email, 'IBAN', call.request.symbol, call.request.value, 0)
-                .then(function (response) {
+            .then(response => {
                 console.log('deposit - save deposit transaction into db');
                 return callback();
-            })["catch"](function (error) {
+            })
+            .catch(error => {
                 console.log("deposit - internal error with db");
                 return callback({
                     code: 500,
@@ -436,7 +492,8 @@ var implementations = {
                     status: grpc.status.INTERNAL
                 });
             });
-        })["catch"](function (error) {
+        })
+        .catch(error => {
             console.log("deposit - internal error with db");
             return callback({
                 code: 500,
@@ -445,9 +502,10 @@ var implementations = {
             });
         });
     },
+
     /** WITHDRAW - prelievo dal conto dell'utente di una somma nella valuta scelta*/
-    withdraw: function (call, callback) {
-        if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token) {
+    withdraw: (call, callback) =>{
+        if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token){
             console.log("withdraw - invalid input");
             return callback({
                 code: 400,
@@ -455,10 +513,10 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        try {
-            jwt.verify(call.request.token, jwtKey);
-        }
-        catch (e) {
+        
+        try { 
+            jwt.verify(call.request.token, jwtKey)
+        } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
                 console.log("withdraw - wrong token");
                 return callback({
@@ -474,7 +532,8 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        if (call.request.symbol != "EUR" && call.request.symbol != "USD") {
+
+        if (call.request.symbol!="EUR" && call.request.symbol!="USD"){
             console.log("withdraw - invalid input");
             return callback({
                 code: 400,
@@ -482,7 +541,8 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        if (call.request.value <= 0) {
+
+        if (call.request.value<=0){
             console.log("withdraw - invalid value");
             return callback({
                 code: 400,
@@ -490,14 +550,17 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        updateCount(call.request.email, call.request.symbol, (call.request.value * -1))
-            .then(function (response) {
+
+        updateCount(call.request.email, call.request.symbol, (call.request.value*-1))
+        .then(response => {
             console.log('withdraw - update count into db');
+
             saveTransaction(call.request.email, call.request.symbol, 'IBAN', call.request.value, 0)
-                .then(function (response) {
+            .then(response => {
                 console.log('save withdraw transaction into db');
                 return callback();
-            })["catch"](function (error) {
+            })
+            .catch(error => {
                 console.log("withdraw - internal error with db");
                 return callback({
                     code: 500,
@@ -505,8 +568,9 @@ var implementations = {
                     status: grpc.status.INTERNAL
                 });
             });
-        })["catch"](function (error) {
-            if (error.code == 22012) {
+        })
+        .catch(error => {
+            if (error.code==22012){
                 console.log("withdraw - not enought");
                 return callback({
                     code: 400,
@@ -514,7 +578,7 @@ var implementations = {
                     status: grpc.status.INTERNAL
                 });
             }
-            else {
+            else{
                 console.log("withdraw - internal error with db");
                 return callback({
                     code: 500,
@@ -524,9 +588,10 @@ var implementations = {
             }
         });
     },
+
     /** BUY - sposta una determinata quantità da un conto all'altro applicando il tasso di cambio*/
-    buy: function (call, callback) {
-        if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token) {
+    buy: (call, callback) =>{
+        if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token){
             console.log("buy - invalid input");
             return callback({
                 code: 400,
@@ -534,7 +599,8 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        if (call.request.symbol != "EUR" && call.request.symbol != "USD") {
+
+        if (call.request.symbol!="EUR" && call.request.symbol!="USD"){
             console.log("buy - invalid input");
             return callback({
                 code: 400,
@@ -542,7 +608,8 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        if (call.request.value <= 0) {
+
+        if (call.request.value<=0){
             console.log("buy - invalid value");
             return callback({
                 code: 400,
@@ -550,10 +617,10 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
+
         try {
-            jwt.verify(call.request.token, jwtKey);
-        }
-        catch (e) {
+            jwt.verify(call.request.token, jwtKey)
+        } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
                 console.log("buy - wrong token");
                 return callback({
@@ -569,32 +636,38 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        var to = call.request.symbol;
-        var from = 'EUR';
-        if (to == 'EUR') {
+        
+        var to:string = call.request.symbol;
+        var from:string = 'EUR';
+        if (to =='EUR'){
             from = 'USD';
         }
-        var descriptorExchange = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/exchange.proto")));
-        var grpcClient = new descriptorExchange.greeter.Greeter(config.exchangeIP + ":9000", grpc.credentials.createInsecure());
-        grpcClient.exchange({ value: call.request.value, from: to, to: from }, function (err, data) {
-            if (err) {
-                console.log("exchange error:" + err);
-                data = 0;
+
+        const descriptorExchange = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/exchange.proto")))
+        const grpcClient = new descriptorExchange.greeter.Greeter(config.exchangeIP+":9000", grpc.credentials.createInsecure())
+    
+        grpcClient.exchange({value: call.request.value, from: to, to: from}, (err, data) => {
+            if (err){
+                console.log("exchange error:"+err)
+                data = 0
                 return callback({
                     code: 500,
                     message: "internal error with exchange",
                     status: grpc.status.INTERNAL
                 });
             }
-            var valuesFrom = data.value;
-            updateCounts(call.request.email, from, call.request.symbol, valuesFrom, call.request.value)
-                .then(function (response) {
+            var valuesFrom:number = data.value
+            
+            updateCounts(call.request.email, from, call.request.symbol, valuesFrom, call.request.value) 
+            .then(response => {
                 console.log('buy - update counts into db');
+
                 saveTransaction(call.request.email, from, call.request.symbol, call.request.value, data.rate)
-                    .then(function (response) {
+                .then(response => {
                     console.log('save buy transaction into db');
                     return callback();
-                })["catch"](function (error) {
+                })
+                .catch(error => {
                     console.log("buy - internal error with db");
                     return callback({
                         code: 500,
@@ -602,8 +675,9 @@ var implementations = {
                         status: grpc.status.INTERNAL
                     });
                 });
-            })["catch"](function (error) {
-                if (error.code == 22012) {
+            })
+            .catch(error => {
+                if (error.code==22012){
                     console.log("buy - not enought");
                     return callback({
                         code: 400,
@@ -611,7 +685,7 @@ var implementations = {
                         status: grpc.status.INTERNAL
                     });
                 }
-                else {
+                else{
                     console.log("buy - internal error with db");
                     return callback({
                         code: 500,
@@ -620,11 +694,12 @@ var implementations = {
                     });
                 }
             });
-        });
+        })
     },
+
     /** LIST TRANSACTIONS - restituisce la lista di transazioni di un utente con la possiblità di filtrarle */
-    listTransactions: function (call, callback) {
-        if (!call.request.email || !call.request.token) {
+    listTransactions: (call, callback) =>{ 
+        if (!call.request.email || !call.request.token){
             console.log("listTransactions - empty required input");
             return callback({
                 code: 400,
@@ -632,7 +707,8 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        if (call.request.valueMin && call.request.valueMax && call.request.valueMax < call.request.valueMin) {
+
+        if (call.request.valueMin && call.request.valueMax && call.request.valueMax<call.request.valueMin){
             console.log("listTransactions - valueMax<valueMin");
             return callback({
                 code: 400,
@@ -640,7 +716,8 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        if (call.request.dateMin && call.request.dateMax && call.request.dateMax < call.request.dateMin) {
+
+        if (call.request.dateMin && call.request.dateMax && call.request.dateMax<call.request.dateMin){
             console.log("listTransactions - dateMax<dateMin");
             return callback({
                 code: 400,
@@ -648,7 +725,8 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        if (call.request.rateMin && call.request.rateMax && call.request.rateMin < call.request.rateMax) {
+
+        if (call.request.rateMin && call.request.rateMax && call.request.rateMin<call.request.rateMax){
             console.log("listTransactions - rateMin<rateMax");
             return callback({
                 code: 400,
@@ -656,7 +734,8 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        if ((call.request.from && call.request.from != "EUR" && call.request.from != "USD" && call.request.from != "IBAN") || (call.request.to && call.request.to != "EUR" && call.request.to != "USD" && call.request.to != "IBAN")) {
+
+        if ((call.request.from && call.request.from!="EUR" && call.request.from!="USD" && call.request.from!="IBAN")||(call.request.to && call.request.to!="EUR" && call.request.to!="USD" && call.request.to!="IBAN")){
             console.log("listTransactions - invalid to/from symbol");
             return callback({
                 code: 400,
@@ -664,7 +743,8 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
-        if (call.request.value <= 0) {
+
+        if (call.request.value<=0){
             console.log("buy - invalid value");
             return callback({
                 code: 400,
@@ -672,10 +752,10 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
+
         try {
-            jwt.verify(call.request.token, jwtKey);
-        }
-        catch (e) {
+            jwt.verify(call.request.token, jwtKey)
+        } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
                 console.log("buy - wrong token");
                 return callback({
@@ -691,13 +771,15 @@ var implementations = {
                 status: grpc.status.INTERNAL
             });
         }
+
         findTransactions(call.request.email, call.request.from, call.request.to, call.request.valueMin, call.request.valueMax, call.request.dateMin, call.request.dateMax, call.request.rateMin, call.request.rateMax)
-            .then(function (response) {
+        .then(response => {
             console.log('listTransactions - get list from db');
             return callback(null, {
                 response: JSON.stringify(response)
             });
-        })["catch"](function (error) {
+        })
+        .catch(error => {
             console.log("listTransactions - internal error with db");
             return callback({
                 code: 500,
@@ -706,14 +788,18 @@ var implementations = {
             });
         });
     }
-};
+}
+
+
+
 /** avvio users grpc server */
-var descriptorUsers = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/users.proto")));
-var server = new grpc.Server();
-server.bindAsync = promisify(server.bindAsync);
-server.bindAsync('0.0.0.0:' + PORT, grpc.ServerCredentials.createInsecure())
-    .then(function () {
-    server.addService(descriptorUsers.greeter.Greeter.service, implementations);
-    server.start();
-    console.log("users grpc server started on port %O", PORT);
-})["catch"](console.log);
+const descriptorUsers = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/users.proto")))
+const server = new grpc.Server()
+server.bindAsync = promisify(server.bindAsync)
+server.bindAsync('0.0.0.0:'+PORT, grpc.ServerCredentials.createInsecure())
+  .then(() => {
+    server.addService(descriptorUsers.greeter.Greeter.service, implementations)
+    server.start()
+    console.log("users grpc server started on port %O", PORT)
+  })
+  .catch(console.log)

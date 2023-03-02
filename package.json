@@ -4,11 +4,13 @@
   "description": "piattaforma per l'acquisto e lo scambio di dollari ed euro",
   "main": "index.js",
   "scripts": {
-    "build": "node ./frontend/build.js",
-    "start-exchange": "node ./exchange/exchange.js",
-    "start-users": "node ./users/users.js",
-    "start-api": "node ./api/api.js",
-    "start-frontend": "node ./frontend/client.js"
+    "build": "node ./api/build.js",
+    "dev-exchange": "npx tsc ./exchange/exchange.ts && node ./exchange/exchange.js",
+    "dev-users": "npx tsc ./users/users.ts && node ./users/users.js",
+    "dev-api": "npx tsc ./api/api.ts && node ./api/api.js",
+    "exchange": "node ./exchange/exchange.js",
+    "users": "node ./users/users.js",
+    "api": "node ./api/api.js"
   },
   "repository": {
     "type": "git",
@@ -32,9 +34,14 @@
     "isomorphic-fetch": "^3.0.0",
     "jsonwebtoken": "^9.0.0",
     "pg": "^8.9.0",
+    "protobuf-compiler": "^1.0.2",
     "xhr2": "^0.2.1",
     "xml-js": "^1.6.11",
     "xml2js": "^0.4.23",
     "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.5.2",
+    "typescript": "^4.9.5"
   }
 }

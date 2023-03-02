@@ -1,5 +1,5 @@
 swagger: "2.0"
-host: "localhost:80"
+host: "0.0.0.0:80"
 basePath: "/v2"
 info:
   description: "piattaforma che consenta agli utenti autenticati di simulare l'acquisto di dollari in cambio di euro e viceversa"
