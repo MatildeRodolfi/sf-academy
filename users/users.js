@@ -21,52 +21,47 @@ function validPassword(password, hash, salt) {
     return newhash == hash;
 }
 ;
-/** dati di accesso alla db */
+/** dati di accesso al db */
 var Pool = require('pg').Pool;
 console.log(config.db);
 var pool = new Pool(config.db);
 /** SAVE USER - salvataggio dati utente su db*/
 function saveUser(email, name, iban, salt, pw) {
     return new Promise(function (resolve, reject) {
-        var query = 'INSERT INTO users (email, name, iban, password, salt) VALUES ('
-            + '\'' + email + '\', '
-            + '\'' + name + '\', '
-            + '\'' + iban + '\', '
-            + '\'' + pw + '\', '
-            + '\'' + salt + '\')';
-        pool.query(query, function (error, results) {
+        var query = 'INSERT INTO users (email, name, iban, password, salt) VALUES ($1, $2, $3, $4, $5)';
+        pool.query(query, [email, name, iban, pw, salt], function (error, results) {
             if (error) {
                 reject(error);
                 console.log(error);
             }
             else {
                 console.log('user save into db');
+                resolve(results);
             }
-            resolve(results);
         });
     });
 }
 /** GET PASSWORD AND SALT OF USER - restituisce hash e salt dell'utente dal db*/
 function getPasswordAndSaltOfUser(email) {
     return new Promise(function (resolve, reject) {
-        var query = 'SELECT password, salt FROM users WHERE email=\'' + email + '\'';
-        pool.query(query, function (error, results) {
+        var query = 'SELECT password, salt FROM users WHERE email = $1';
+        pool.query(query, [email], function (error, results) {
             if (error) {
                 reject(error);
                 console.log(error);
             }
             else {
                 console.log('get user\'s hash and salt from db');
+                resolve(results.rows);
             }
-            resolve(results.rows);
         });
     });
 }
 /** GET PASSWORD AND SALT OF USER - restituisce valori dei conti dell'utente dal db*/
 function getCountsValue(email) {
     return new Promise(function (resolve, reject) {
-        var query = 'SELECT eur, usd FROM users WHERE email=\'' + email + '\'';
-        pool.query(query, function (error, results) {
+        var query = 'SELECT eur, usd FROM users WHERE email = $1';
+        pool.query(query, [email], function (error, results) {
             if (error) {
                 reject(error);
                 console.log(error);
@@ -78,17 +73,18 @@ function getCountsValue(email) {
 /** UPDATE COUNT - aggiornamento valore del conto */
 function updateCount(email, symbol, value) {
     return new Promise(function (resolve, reject) {
-        var query = ' DO $$ ' +
-            'BEGIN ' +
-            'IF (SELECT ' + symbol + ' FROM users WHERE email=\'' + email + '\')>=' + value * (-1) + ' THEN ' +
-            'UPDATE users SET ' + symbol + ' = ' + value +
-            '+(SELECT ' + symbol + ' FROM users WHERE email=\'' + email + '\' FOR UPDATE)' +
-            'WHERE email=\'' + email + '\';' +
-            'ELSE ' +
-            'SELECT (1 / 0); ' +
-            'END IF;' +
-            'END $$;';
-        pool.query(query, function (error, results) {
+        var query;
+        if (symbol == "EUR") {
+            query = 'UPDATE users SET ' +
+                'eur = $1+(SELECT eur FROM users WHERE email = $2 FOR UPDATE) ' +
+                'WHERE (email = $2) AND ((SELECT eur FROM users WHERE email = $2) >= $1*(-1.00))';
+        }
+        else {
+            query = 'UPDATE users SET ' +
+                'usd = $1+(SELECT usd FROM users WHERE email = $2 FOR UPDATE) ' +
+                'WHERE (email = $2) AND ((SELECT usd FROM users WHERE email = $2) >= $1*(-1.00))';
+        }
+        pool.query(query, [value, email], function (error, results) {
             if (error) {
                 console.log(error);
                 reject(error);
@@ -98,20 +94,22 @@ function updateCount(email, symbol, value) {
     });
 }
 /** UPDATE COUNTS - aggiornamento valore di conti con passaggio tra uno e l'altro*/
-function updateCounts(email, from, to, valueFrom, valueTo) {
+function updateCounts(email, to, valueFrom, valueTo) {
     return new Promise(function (resolve, reject) {
-        var query = ' DO $$ ' +
-            'BEGIN ' +
-            'IF (SELECT ' + from + ' FROM users WHERE email=\'' + email + '\')>=' + valueTo + ' THEN ' +
-            'UPDATE users SET ' +
-            to + ' = ' + valueTo + '+(SELECT ' + to + ' FROM users WHERE email=\'' + email + '\' FOR UPDATE), ' +
-            from + ' = -' + valueFrom + '+(SELECT ' + from + ' FROM users WHERE email=\'' + email + '\' FOR UPDATE) ' +
-            'WHERE email=\'' + email + '\';' +
-            'ELSE ' +
-            'SELECT (1 / 0); ' +
-            'END IF;' +
-            'END $$;';
-        pool.query(query, function (error, results) {
+        var query;
+        if (to == "USD") {
+            query = 'UPDATE users SET ' +
+                'eur = ((SELECT eur FROM users WHERE email = $2 FOR UPDATE)-$1), ' +
+                'usd = ((SELECT usd FROM users WHERE email = $2 FOR UPDATE)+$3) ' +
+                'WHERE (email = $2) AND ((SELECT eur FROM users WHERE email = $2) >= ($1 *(-1.00)))';
+        }
+        else {
+            query = 'UPDATE users SET ' +
+                'usd = ((SELECT usd FROM users WHERE email = $2 FOR UPDATE)-$1), ' +
+                'eur = ((SELECT eur FROM users WHERE email = $2 FOR UPDATE)+$3) ' +
+                'WHERE (email = $2) AND ((SELECT usd FROM users WHERE email = $2) >= ($1 *(-1.00)))';
+        }
+        pool.query(query, [valueFrom, email, valueTo], function (error, results) {
             if (error) {
                 console.log(error);
                 reject(error);
@@ -123,14 +121,8 @@ function updateCounts(email, from, to, valueFrom, valueTo) {
 /** SAVE TRANSACTION - salvataggio dati della transazione sul db*/
 function saveTransaction(email, from, to, value, rate) {
     return new Promise(function (resolve, reject) {
-        var query = 'INSERT INTO transactions (mail, "to", "from", value, date, rate) VALUES ('
-            + '\'' + email + '\', '
-            + '\'' + to + '\', '
-            + '\'' + from + '\', '
-            + '' + value + ', '
-            + 'current_timestamp, '
-            + '' + rate + ')';
-        pool.query(query, function (error, results) {
+        var query = 'INSERT INTO transactions (mail, "to", "from", value, date, rate) VALUES ($1, $2, $3, $4, current_timestamp, $5)';
+        pool.query(query, [email, to, from, value, rate], function (error, results) {
             if (error) {
                 console.log(error);
                 reject(error);
@@ -142,33 +134,50 @@ function saveTransaction(email, from, to, value, rate) {
 /** FIND TRANSACTIONS - estrazione transazione dell'utente che rispettano i filtri applicati*/
 function findTransactions(email, from, to, valueMin, valueMax, dateMin, dateMax, rateMin, rateMax) {
     return new Promise(function (resolve, reject) {
-        var query = 'SELECT * FROM transactions WHERE '
-            + 'mail=\'' + email + '\'';
+        var query = 'SELECT * FROM transactions WHERE mail=$1';
+        var values = [email];
+        var i = 2;
         if (from) {
-            query += ' AND transactions.from=\'' + from + '\'';
+            query += ' AND transactions.from=$' + i;
+            values.push(from);
+            i++;
         }
         if (to) {
-            query += ' AND transactions.to=\'' + to + '\'';
+            query += ' AND transactions.to=$' + i;
+            values.push(to);
+            i++;
         }
         if (valueMin) {
-            query += ' AND value>=\'' + valueMin + '\'';
+            query += ' AND transactions.value>=$' + i;
+            values.push(valueMin);
+            i++;
         }
         if (valueMax) {
-            query += ' AND value<=\'' + valueMax + '\'';
+            query += ' AND transactions.value<=$' + i;
+            values.push(valueMax);
+            i++;
         }
         if (dateMin) {
-            query += ' AND date>=\'' + dateMin + '\'';
+            query += ' AND transactions.date>=$' + i;
+            values.push(dateMin);
+            i++;
         }
         if (dateMax) {
-            query += ' AND date<=\'' + dateMax + '\'';
+            query += ' AND transactions.date<=$' + i;
+            values.push(dateMax);
+            i++;
         }
         if (rateMin) {
-            query += ' AND rate>=\'' + rateMin + '\'';
+            query += ' AND transactions.rate>=$' + i;
+            values.push(rateMin);
+            i++;
         }
         if (rateMax) {
-            query += ' AND rate<=\'' + rateMax + '\'';
+            query += ' AND transactions.rate<=$' + i;
+            values.push(rateMax);
+            i++;
         }
-        pool.query(query, function (error, results) {
+        pool.query(query, values, function (error, results) {
             if (error) {
                 console.log(error);
                 reject(error);
@@ -587,7 +596,7 @@ var implementations = {
                 });
             }
             var valuesFrom = data.value;
-            updateCounts(call.request.email, from, call.request.symbol, valuesFrom, call.request.value)
+            updateCounts(call.request.email, call.request.symbol, valuesFrom, call.request.value)
                 .then(function (response) {
                 console.log('buy - update counts into db');
                 saveTransaction(call.request.email, from, call.request.symbol, call.request.value, data.rate)

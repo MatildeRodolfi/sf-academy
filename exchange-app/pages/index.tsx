@@ -1,39 +1,12 @@
 import Head from 'next/head'
 import styles from '@/styles/Home.module.css'
-import 'isomorphic-fetch'
 import { useState, useEffect, Ref } from 'react'
 import React, { Component }  from 'react';
+import type{GetCountsResponse, ListResponse} from "../../build/index"
+import {UserApi, TransactionApi} from "../../build/index"
 
-type transactionResponse = {
-  data: {
-    from: string;
-    to: string;
-    value: number;
-    rate: number;
-    date: string;
-  }[]
-};
-
-type dataTransactionResponse= JSON & {
-  from: string;
-  to: string;
-  value: number;
-  rate: number;
-  date: string;
-}
-
-type countsResponse={
-  eur: number;
-  usd: number;
-}
-
-type tokenResponse = {
-  details: string;
-  data: {
-    token: string;
-  }
-};
-
+var usersApi = new UserApi;
+var transactionApi = new TransactionApi
 
 /*--------------------------------
 ----------------------------------
@@ -68,10 +41,6 @@ class LoginDeposit extends React.Component<{visible:boolean, close:Function, log
   login(e: React.SyntheticEvent){
     e.preventDefault();
 
-    var client = require("../../api/exchangeApi.js")({
-      endpoint: "http://localhost:80",
-    })
-
     const target = e.target as typeof e.target & {
       email: { value: string };
       password: { value: string };
@@ -94,27 +63,17 @@ class LoginDeposit extends React.Component<{visible:boolean, close:Function, log
       this.setState({ error: ""});
     }
 
-    client.login({
-      headers:{
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: {
-          email: mail, 
-          password: password
-      }
+    usersApi.login({email: mail,password: password})
+    .then((res:any) => {
+      console.log(res);
+      sessionStorage.setItem("email", mail);
+      sessionStorage.setItem("token", res.data.token);
+      this.props.logged();
+      this.setState({ error: ""});
     })
-    .then((res:any) => res.json())
-    .then((res:tokenResponse) => {
-      if (res.details){
-        this.setState({ error: res.details});
-      }
-      else{
-        sessionStorage.setItem("email", mail);
-        sessionStorage.setItem("token", res.data.token);
-        this.props.logged();
-      }
+    .catch(()=>{
+      this.setState({ error: "wrong email or token"});
     })
-    .catch(console.error)
   }
 
   closeCard(e: React.FormEvent<HTMLDivElement>){
@@ -181,10 +140,6 @@ class SignupDeposit extends React.Component<{visible:boolean, close:Function, lo
   signup(e: React.SyntheticEvent){
     e.preventDefault();
 
-    var client = require("../../api/exchangeApi.js")({
-      endpoint: "http://localhost:80",
-    })
-
     const target = e.target as typeof e.target & {
       email: { value: string };
       password: { value: string };
@@ -224,29 +179,22 @@ class SignupDeposit extends React.Component<{visible:boolean, close:Function, lo
 
     this.setState({ error: ""});
 
-    client.signup({
-      headers:{
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: {
-          email: mail, 
-          password: password,
-          name: name,
-          iban: iban
-      }
+    usersApi.signup({
+      email: mail, 
+      password: password,
+      name: name,
+      iban: iban
     })
-    .then((res:any) => res.json())
-    .then((res:tokenResponse) => {
-      if (res.details){
-        this.setState({ error: res.details});
-      }
-      else{
-        sessionStorage.setItem("email", mail);
-        sessionStorage.setItem("token", res.data.token);
-        this.props.logged();
-      }
+    .then((res:any) => {
+      console.log(res);
+      sessionStorage.setItem("email", mail);
+      sessionStorage.setItem("token", res.data.token);
+      this.setState({ error: ""});
+      this.props.logged();
     })
-    .catch(console.error)
+    .catch(()=>{
+      this.setState({ error: "mail already userd"});
+    })
   }
 
   closeCard(e: React.FormEvent<HTMLDivElement>){
@@ -352,28 +300,17 @@ class CardDeposit extends React.Component<{visible:boolean, close:Function}, any
       //make deposit
       var email = sessionStorage.getItem("email");
       var token = sessionStorage.getItem("token");
+      if (!email){email=""}
+      if (!token){token=""}
 
-      var client = require("../../api/exchangeApi.js")({
-        endpoint: "http://localhost:80",
-      })
-      client.deposit({
-        headers:{
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: {
-            email: email,
-            value: value,
-            symbol: to, 
-            token: token
-        }
+      transactionApi.deposit({
+        email: email,
+        value: value,
+        symbol: to, 
+        token: token
       })
       .then((res:any) => {
-        if (res.status==200){
-          this.props.close();
-        }
-        else{
-          this.setState({ error: "error with saving"});
-        };
+        this.props.close();
       })
       .catch(() => {
         this.setState({ error: "error with saving"});
@@ -459,28 +396,17 @@ class CardBuy extends React.Component<{visible:boolean, close:Function}, any> {
       //buy
       var email = sessionStorage.getItem("email");
       var token = sessionStorage.getItem("token");
+      if (!email){email=""}
+      if (!token){token=""}
 
-      var client = require("../../api/exchangeApi.js")({
-        endpoint: "http://localhost:80",
-      })
-      client.buy({
-        headers:{
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: {
-            email: email,
-            value: value,
-            symbol: to, 
-            token: token
-        }
+      transactionApi.buy({
+        email: email,
+        value: value,
+        symbol: to, 
+        token: token
       })
       .then((res:any) => {
-        if (res.status==200){
-          this.props.close();
-        }
-        else{
-          this.setState({ error: "error with saving"});
-        };
+        this.props.close();
       })
       .catch(() => {
         this.setState({ error: "error with saving"});
@@ -566,28 +492,18 @@ class CardWithdraw extends React.Component<{visible:boolean, close:Function}, an
       //make withdraw
       var email = sessionStorage.getItem("email");
       var token = sessionStorage.getItem("token");
+      if (!email){email=""}
+      if (!token){token=""}
 
-      var client = require("../../api/exchangeApi.js")({
-        endpoint: "http://localhost:80",
-      })
-      client.withdraw({
-        headers:{
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: {
-            email: email,
-            value: value,
-            symbol: to, 
-            token: token
-        }
+      transactionApi.withdraw({
+        email: email,
+        value: value,
+        symbol: to, 
+        token: token
       })
       .then((res:any) => {
-        if (res.status==200){
-          this.props.close();
-        }
-        else{
-          this.setState({ error: "error with saving"});
-        };
+        console.log(res);
+        this.props.close();
       })
       .catch(() => {
         this.setState({ error: "error with saving"});
@@ -1222,78 +1138,72 @@ function TransactionTable(props:{
   const [lista, setLista] = useState<any>();
 
   useEffect(() => {
-    var client = require("../../api/exchangeApi.js")({
-      endpoint: "http://localhost:80",
-    })
     var email = sessionStorage.getItem("email");
     var token = sessionStorage.getItem("token");
-    client.listTransactions({
-      headers:{
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: {
-          email: email,
-          from: props.filter.from,
-          to: props.filter.to,
-          valueMin: props.filter.valueMin,
-          valueMax: props.filter.valueMax,
-          dateMin: props.filter.dateMin,
-          dateMax: props.filter.dateMax,
-          rateMin: props.filter.rateMin,
-          rateMax: props.filter.rateMax,
-          token: token
-      }
+    if (!email){email=""}
+    if (!token){token=""}
+
+    transactionApi.listTransactions({
+      email: email,
+      from: props.filter.from,
+      to: props.filter.to,
+      valueMin: props.filter.valueMin,
+      valueMax: props.filter.valueMax,
+      dateMin: props.filter.dateMin,
+      dateMax: props.filter.dateMax,
+      rateMin: props.filter.rateMin,
+      rateMax: props.filter.rateMax,
+      token: token
     })
-    .then((res:any) => res.json())
-    .then((res:transactionResponse) => {
+    .then((res:any) => {
       if (res.data){
-        var transactions:dataTransactionResponse[] = JSON.parse(res.data.toString());
+        var transactions = JSON.parse(res.data.transactions.toString());
         switch(props.sort.type) {
           case 'from':
             if (!props.sort.ascending) {
-              transactions.sort(function(a,b){return a.from > b.from? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.from > b.from? -1:1;});
             }
             else{
-              transactions.sort(function(a,b){return a.from < b.from? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.from < b.from? -1:1;});
             }
             break;
           case 'to':
             if (!props.sort.ascending) {
-              transactions.sort(function(a,b){return a.to > b.to? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.to > b.to? -1:1;});
             }
             else{
-              transactions.sort(function(a,b){return a.to < b.to? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.to < b.to? -1:1;});
             }
             break;
           case 'value':
             if (!props.sort.ascending) {
-              transactions.sort(function(a,b){return +a.value > +b.value? -1:1;}
+              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.value > +b.value? -1:1;}
                 );
             }
             else{
-              transactions.sort(function(a,b){return +a.value < +b.value? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.value < +b.value? -1:1;});
             }
             break;
           case 'rate':
             if (!props.sort.ascending) {
-              transactions.sort(function(a,b){return +a.rate > +b.rate? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.rate > +b.rate? -1:1;});
             }
             else{
-              transactions.sort(function(a,b){return +a.rate < +b.rate? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.rate < +b.rate? -1:1;});
             }
             break;
           default:
             if (!props.sort.ascending) {
-              transactions.sort(function(a,b){return a.date > b.date? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.date > b.date? -1:1;});
             }
             else{
-              transactions.sort(function(a,b){return a.date < b.date? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.date < b.date? -1:1;});
             }
             break;
         }
         
         setLista(
-            transactions.map((data, index) =>
+            transactions.map((data:ListResponse, index:number) =>
             <tr key={index}> 
               <td>{data.from}</td>
               <td>{data.to}</td>
@@ -1325,26 +1235,19 @@ function Counts(props:{update:boolean}){
   const [usd, setUsd] = useState<number>(0);
 
   useEffect(() => {
-    
-    var client = require("../../api/exchangeApi.js")({
-      endpoint: "http://localhost:80",
-    })
     var email = sessionStorage.getItem("email");
     var token = sessionStorage.getItem("token");
-    client.getCounts({
-      headers:{
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: {
-          email: email, 
-          token: token
-      }
+    if (!email){email=""}
+    if (!token){token=""}
+
+    usersApi.getCounts({
+      email: email, 
+      token: token
     })
-    .then((res:any) => res.json())
-    .then((res:countsResponse) => {
-      var eurValue: number = +res.eur.toFixed(2);
+    .then((res:any) => {
+      var eurValue: number = +res.data.eur.toFixed(2);
       setEur(eurValue);
-      var usdValue: number = +res.usd.toFixed(2);
+      var usdValue: number = +res.data.usd.toFixed(2);
       setUsd(usdValue);
     })
     .catch(console.error)
@@ -1463,6 +1366,7 @@ export default function Home() {
   }
 
   function closeCardWithdraw(){
+
     setWithdrawCardVIsible(false); 
     updateSort("date", false);
   }

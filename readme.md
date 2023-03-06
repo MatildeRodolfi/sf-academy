@@ -19,8 +19,14 @@ open 3 terminals, execute:
 - users microservice: `npm run users`
 - api microservice: `npm run api`
 
+## Execute backend in docker
+run `docker compose -f docker-compose.yml up --build`
+
 ## Execute frontend in dev
 run `npm run dev` in the '\exchange-app' folder
 
 ## Execute frontend in prod
 run `npm run start` in the '\exchange-app' folder
+
+## Execute frontend in docker
+run `docker compose -f docker-compose.yml up --build` in the '\exchange-app' folder

@@ -21,7 +21,8 @@ var operations = {
             else {
                 console.log("signup ok");
                 return res.status(200).json({
-                    data: data
+                    token: data.token,
+                    maxAge: data.maxAge
                 });
             }
         });
@@ -38,7 +39,8 @@ var operations = {
             else {
                 console.log("login ok");
                 return res.status(200).json({
-                    data: data
+                    token: data.token,
+                    maxAge: data.maxAge
                 });
             }
         });
@@ -55,7 +57,8 @@ var operations = {
             else {
                 console.log("refreshToken ok");
                 return res.status(200).json({
-                    data: data
+                    token: data.token,
+                    maxAge: data.maxAge
                 });
             }
         });
@@ -143,7 +146,7 @@ var operations = {
                 console.log("listTransactions ok");
                 var data = data.response;
                 return res.status(200).json({
-                    data: data
+                    transactions: data
                 });
             }
         });
@@ -159,7 +162,7 @@ initialize({
     errorMiddleware: function (err, req, res, next) {
         res.json(err);
     },
-    apiDoc: join(__dirname, "../api/apiDoc.yml"),
+    apiDoc: join(__dirname, "apiDoc.yml"),
     dependencies: {
         log: console.log
     },
