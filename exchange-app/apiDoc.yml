@@ -11,7 +11,6 @@ tags:
   - name: "transaction"
     description: "Create and view transaction"
 schemes:
-  - "https"
   - "http"
 paths:
   /signup:
@@ -141,6 +140,9 @@ paths:
       responses:
         200:
           description: "successful operation"
+          schema:
+            items:
+              $ref: "#/definitions/done"
         400:
           description: "Error"
           schema:
@@ -165,6 +167,9 @@ paths:
       responses:
         200:
           description: "successful operation"
+          schema:
+            items:
+              $ref: "#/definitions/done"
         400:
           description: "Error"
           schema:
@@ -189,6 +194,9 @@ paths:
       responses:
         200:
           description: "successful operation"
+          schema:
+            items:
+              $ref: "#/definitions/done"
         400:
           description: "Error"
           schema:
@@ -213,6 +221,9 @@ paths:
       responses:
         200:
           description: "successful operation"
+          schema:
+            items:
+              $ref: "#/definitions/listResponse"
         400:
           description: "Error"
           schema:
@@ -230,6 +241,11 @@ definitions:
         type: "string"
       iban:
         type: "string"
+    required:
+        - email
+        - password
+        - name
+        - iban
   userLogin:
     type: "object"
     properties:
@@ -237,6 +253,9 @@ definitions:
         type: "string"
       password:
         type: "string"
+    required:
+        - email
+        - password
   refreshToken:
     type: "object"
     properties:
@@ -244,6 +263,9 @@ definitions:
         type: "string"
       token:
         type: "string"
+    required:
+        - email
+        - token
   token:
     type: "object"
     properties:
@@ -252,6 +274,9 @@ definitions:
       maxAge:
         type: "integer"
         format: "int32"
+    required:
+        - token
+        - maxAge
   getCountsRequest:
     type: "object"
     properties:
@@ -259,19 +284,35 @@ definitions:
         type: "string"
       token:
         type: "string"
+    required:
+        - email
+        - token
   getCountsResponse:
     type: "object"
     properties:
       EUR: 
-        type: "string"
+        type: "number"
+        format: "float"
       USD: 
         type: "number"
         format: "float"
+    required:
+        - EUR
+        - USD
   errorDescription:
     type: "object"
     properties:
       details:
         type: "string"
+    required:
+          - details
+  done:
+    type: "object"
+    properties:
+      details:
+        type: "string"
+    required:
+          - details
   transactionRequest:
     type: "object"
     properties:
@@ -284,6 +325,11 @@ definitions:
         type: "string"
       token:
         type: "string"
+    required:
+        - email
+        - value
+        - symbol
+        - token
   listRequest:
     type: "object"
     properties:
@@ -311,3 +357,27 @@ definitions:
         format: "float"
       token:
         type: "string"
+    required:
+        - email
+        - token
+  listResponse:
+    type: "object"
+    properties:
+      from:
+        type: "string"
+      to:
+        type: "string"
+      value:
+        type: "number"
+        format: "float"
+      date:
+        type: "string"
+      rate:
+        type: "number"
+        format: "float"
+    required:
+        - from
+        - to
+        - value
+        - date 
+        - rate

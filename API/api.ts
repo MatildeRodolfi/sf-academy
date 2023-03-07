@@ -1,18 +1,19 @@
-const protoLoader = require("@grpc/proto-loader")
 const grpc = require("@grpc/grpc-js")
-const { join } = require("path")
-const descriptor = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/users.proto")))
-const express = require("express")
-const bodyParser = require("body-parser")
-const { initialize } = require("express-openapi")
-const cors = require('cors');
+import { join } from "path"
+import express from "express"
+import bodyParser from "body-parser"
+import { initialize } from "express-openapi"
+import cors from 'cors'
+import { config } from '../config'
 
-const config = require('../config');
-const grpcClient = new descriptor.greeter.Greeter(config.usersIP+":9001", grpc.credentials.createInsecure())
+const protoLoader = require("@grpc/proto-loader");
+const descriptor = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../../../proto/users.proto")));
+const grpcClient = new descriptor.usersPackage.usersService(config.usersHost+":"+config.usersPort, grpc.credentials.createInsecure());
 
 const operations = {
-  signup: (req, res, next) => {
-    grpcClient.signup({email: req.body.email, password: req.body.password, name: req.body.name, iban: req.body.iban}, (err, data) => {
+  signup: (req:any, res:any, next:any) => {
+    console.log("signup acquired")
+    grpcClient.signup({email: req.body.email, password: req.body.password, name: req.body.name, iban: req.body.iban}, (err:any, data:any) => {
       if (err){
         console.log("signup error: "+err.details)
         var details = err.details;
@@ -30,8 +31,9 @@ const operations = {
     })
   },
 
-  login: (req, res, next) => {
-    grpcClient.login({email: req.body.email, password: req.body.password}, (err, data) => {
+  login: (req:any, res:any, next:any) => {
+    console.log("login acquired")
+    grpcClient.login({email: req.body.email, password: req.body.password}, (err:any, data:any) => {
       if (err){
         console.log("login error: "+err.details)
         var details = err.details
@@ -49,8 +51,9 @@ const operations = {
     })
   },
 
-  refreshToken: (req, res, next) => {
-    grpcClient.refreshToken({email: req.body.email, token: req.body.token}, (err, data) => {
+  refreshToken: (req:any, res:any, next:any) => {
+    console.log("refreshToken acquired")
+    grpcClient.refreshToken({email: req.body.email, token: req.body.token}, (err:any, data:any) => {
       if (err){
         console.log("refreshToken error: "+err.details)
         var details = err.details
@@ -68,8 +71,9 @@ const operations = {
     })
   },
 
-  getCounts: (req, res, next) => {
-    grpcClient.getCounts({email: req.body.email, token: req.body.token}, (err, data) => {
+  getCounts: (req:any, res:any, next:any) => {
+    console.log("getCounts acquired")
+    grpcClient.getCounts({email: req.body.email, token: req.body.token}, (err:any, data:any) => {
       if (err){
         console.log("counts error: "+err.details)
         var details = err.details
@@ -87,9 +91,9 @@ const operations = {
     })
   },
 
-  deposit: (req, res, next) => {
+  deposit: (req:any, res:any, next:any) => {
     console.log("deposit acquired")
-    grpcClient.deposit({email: req.body.email, value : req.body.value, symbol : req.body.symbol, token : req.body.token}, (err, data) => {
+    grpcClient.deposit({email: req.body.email, value : req.body.value, symbol : req.body.symbol, token : req.body.token}, (err:any, data:any) => {
       if (err){
         console.log("deposit error: "+err.details)
         var details = err.details
@@ -106,8 +110,9 @@ const operations = {
     })
   },
 
-  withdraw: (req, res, next) => {
-    grpcClient.withdraw({email: req.body.email, value: req.body.value, symbol: req.body.symbol, token: req.body.token}, (err, data) => {
+  withdraw: (req:any, res:any, next:any) => {
+    console.log("withdraw acquired")
+    grpcClient.withdraw({email: req.body.email, value: req.body.value, symbol: req.body.symbol, token: req.body.token}, (err:any, data:any) => {
       if (err){
         console.log("withdraw error: "+err.details)
         var details = err.details
@@ -124,8 +129,9 @@ const operations = {
     })
   },
 
-  buy: (req, res, next) => {
-    grpcClient.buy({email: req.body.email, value: req.body.value, symbol: req.body.symbol, token: req.body.token}, (err, data) => {
+  buy: (req:any, res:any, next:any) => {
+    console.log("buy acquired")
+    grpcClient.buy({email: req.body.email, value: req.body.value, symbol: req.body.symbol, token: req.body.token}, (err:any, data:any) => {
       if (err){
         console.log("buy error: "+err.details)
         var details = err.details
@@ -142,8 +148,9 @@ const operations = {
     })
   },
 
-  listTransactions: (req, res, next) => {
-    grpcClient.listTransactions({email: req.body.email, from: req.body.from, to: req.body.to, valueMin: req.body.valueMin, valueMax: req.body.valueMax, dateMin: req.body.dateMin, dateMax: req.body.dateMax, rateMin: req.body.rateMin, rateMax: req.body.rateMax, token: req.body.token}, (err, data) => {
+  listTransactions: (req:any, res:any, next:any) => {
+    console.log("listTransactions acquired")
+    grpcClient.listTransactions({email: req.body.email, from: req.body.from, to: req.body.to, valueMin: req.body.valueMin, valueMax: req.body.valueMax, dateMin: req.body.dateMin, dateMax: req.body.dateMax, rateMin: req.body.rateMin, rateMax: req.body.rateMax, token: req.body.token}, (err:any, data:any) => {
       if (err){
         console.log("listTransactions error: "+err.details)
         var details = err.details
@@ -172,14 +179,14 @@ app.use(bodyParser.json())
 
 initialize({
   app,
-  errorMiddleware: (err, req, res, next) => {
+  errorMiddleware: (err:any, req:any, res:any, next:any) => {
     res.json(err)
   },
-  apiDoc: join(__dirname, "apiDoc.yml"),
+  apiDoc: join(__dirname, "../../../exchange-app/apiDoc.yml"),
   dependencies: {
     log: console.log
   },
   operations
 })
 
-app.listen(80, () => console.log("api listening on port 80"))
+app.listen(config.apiPort, () => console.log("api listening on port "+config.apiPort))

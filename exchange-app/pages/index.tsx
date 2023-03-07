@@ -2,8 +2,8 @@ import Head from 'next/head'
 import styles from '@/styles/Home.module.css'
 import { useState, useEffect, Ref } from 'react'
 import React, { Component }  from 'react';
-import type{GetCountsResponse, ListResponse} from "../../build/index"
-import {UserApi, TransactionApi} from "../../build/index"
+import type{GetCountsResponse, ListResponse} from "../openAPI/index"
+import {UserApi, TransactionApi} from "../openAPI/index"
 
 var usersApi = new UserApi;
 var transactionApi = new TransactionApi

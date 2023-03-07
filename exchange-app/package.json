@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "NODE_OPTIONS='--inspect' next dev",
     "build": "next build",
+    "postinstall": "npx @openapitools/openapi-generator-cli generate -g typescript-axios -o ./openAPI -i ./apiDoc.yml && tsc ./openAPI/index.ts && next build",
     "start": "next start",
     "lint": "next lint"
   },

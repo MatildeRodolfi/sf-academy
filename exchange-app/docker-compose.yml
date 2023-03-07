@@ -10,4 +10,5 @@ services:
     volumes:
       - ./:/app
       - /app/node_modules
+      - /app/openAPI
     command: npm run start

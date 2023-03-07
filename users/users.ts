@@ -1,13 +1,13 @@
-const protoLoader = require("@grpc/proto-loader");
-const grpc = require("@grpc/grpc-js");
-const jwt = require("jsonwebtoken")
-const crypt = require("crypto")
-const { join } = require("path")
-const { promisify } = require("util")
-const PORT = 9001
-const jwtKey = "dF3OzQ49J0"
-const jwtExpirySeconds = 3000
-const config = require('../config');
+const protoLoader = require("@grpc/proto-loader")
+const grpc = require("@grpc/grpc-js")
+import jwt from "jsonwebtoken";
+import crypt from "crypto";
+import { join } from "path";
+import { promisify } from "util";
+import { config } from '../config';
+
+import { usersServiceHandlers } from '../proto/build/usersPackage/usersService';
+import { ProtoGrpcType } from '../proto/build/users';
 
 
 /** HASHING PASSWORD - cripta la pw e restituisce hash e salt*/
@@ -27,7 +27,6 @@ function validPassword (password:string, hash:string, salt:string) {
 
 /** dati di accesso al db */
 const Pool = require('pg').Pool
-console.log(config.db);
 const pool = new Pool(config.db);
 
 /** SAVE USER - salvataggio dati utente su db*/
@@ -35,7 +34,7 @@ function saveUser(email:string, name:string, iban:string, salt:string, pw:string
     return new Promise(function(resolve, reject) {
 
         var query = 'INSERT INTO users (email, name, iban, password, salt) VALUES ($1, $2, $3, $4, $5)'; 
-        pool.query(query, [email, name, iban, pw, salt], (error, results) => {
+        pool.query(query, [email, name, iban, pw, salt], (error:any, results:any) => {
             if (error) {
                 reject(error);
                 console.log(error);
@@ -53,7 +52,7 @@ function getPasswordAndSaltOfUser(email:string){
     return new Promise(function(resolve, reject) {
 
         var query = 'SELECT password, salt FROM users WHERE email = $1'; 
-        pool.query(query, [email], (error, results) => {
+        pool.query(query, [email], (error:any, results:any) => {
             if (error) {
                 reject(error);
                 console.log(error);
@@ -71,7 +70,7 @@ function getCountsValue(email:string){
     return new Promise(function(resolve, reject) {
 
         var query = 'SELECT eur, usd FROM users WHERE email = $1'; 
-        pool.query(query, [email], (error, results) => {
+        pool.query(query, [email], (error:any, results:any) => {
             if (error) {
                 reject(error);
                 console.log(error);
@@ -96,11 +95,16 @@ function updateCount(email:string, symbol:string, value:number){
             'WHERE (email = $2) AND ((SELECT usd FROM users WHERE email = $2) >= $1*(-1.00))';
         }
             
-        pool.query(query, [value, email], (error, results) => {
+        pool.query(query, [value, email], (error:any, results:any) => {
             if (error) {
                 console.log(error);
                 reject(error);
             }
+            if (results.rowCount==0) {
+                console.log("results.rowCount==0");
+                reject(results);
+            }
+            console.log(results);
             resolve(results);
         })
     })
@@ -114,19 +118,24 @@ function updateCounts(email:string, to:string, valueFrom:number, valueTo:number)
             query =  'UPDATE users SET '+
             'eur = ((SELECT eur FROM users WHERE email = $2 FOR UPDATE)-$1), '+
             'usd = ((SELECT usd FROM users WHERE email = $2 FOR UPDATE)+$3) '+
-            'WHERE (email = $2) AND ((SELECT eur FROM users WHERE email = $2) >= ($1 *(-1.00)))'; 
+            'WHERE (email = $2) AND ((SELECT eur FROM users WHERE email = $2) >= $1)'; 
         }
         else{
             query =  'UPDATE users SET '+
             'usd = ((SELECT usd FROM users WHERE email = $2 FOR UPDATE)-$1), '+
             'eur = ((SELECT eur FROM users WHERE email = $2 FOR UPDATE)+$3) '+
-            'WHERE (email = $2) AND ((SELECT usd FROM users WHERE email = $2) >= ($1 *(-1.00)))';
+            'WHERE (email = $2) AND ((SELECT usd FROM users WHERE email = $2) >= $1)';
         }
-        pool.query(query, [valueFrom, email, valueTo], (error, results) => {
+        pool.query(query, [valueFrom, email, valueTo], (error:any, results:any) => {
             if (error) {
                 console.log(error);
                 reject(error);
             }
+            if (results.rowCount==0) {
+                console.log("results.rowCount==0");
+                reject(results);
+            }
+            console.log(results);
             resolve(results);
         })
     })
@@ -137,7 +146,7 @@ function saveTransaction(email:string, from:string, to:string, value:number, rat
     return new Promise(function(resolve, reject) {
 
         var query = 'INSERT INTO transactions (mail, "to", "from", value, date, rate) VALUES ($1, $2, $3, $4, current_timestamp, $5)';
-        pool.query(query, [email, to, from, value, rate], (error, results) => {
+        pool.query(query, [email, to, from, value, rate], (error:any, results:any) => {
             if (error) {
                 console.log(error);
                 reject(error);
@@ -194,7 +203,7 @@ function findTransactions(email:string, from:string, to:string, valueMin:number,
             i++;
         }
 
-        pool.query(query, values, (error, results) => {
+        pool.query(query, values, (error:any, results:any) => {
             if (error) {
                 console.log(error);
                 reject(error);
@@ -208,20 +217,19 @@ function findTransactions(email:string, from:string, to:string, valueMin:number,
 
 /** CREATE TOKEN - crea il il token JWT partendo dalla mail dell'utente*/
 function createToken(mail:string){
-    const token:string = jwt.sign({mail}, jwtKey, {
-		algorithm: "HS256",
-		expiresIn: jwtExpirySeconds,
-	})
-
-    return {token: token, maxAge: jwtExpirySeconds * 1000}
+    var token = jwt.sign({ mail: mail }, config.jwtKey, {
+        algorithm: "HS256",
+        expiresIn: +config.jwtExpirySeconds
+    });
+    return { token: token, maxAge: (+config.jwtExpirySeconds)*1000 };
 }
 
 
 
-const implementations = {
+const implementations:usersServiceHandlers = {
 
     /** SIGNUP -  salva l'utente sul db e restituisce il token JWT*/
-    signup: (call, callback) => {
+    signup: (call:any, callback:any) => {
 
         if (!call.request.email || !call.request.password || !call.request.name || !call.request.iban){
             console.log("signup - invalid input");
@@ -244,7 +252,7 @@ const implementations = {
             })
         })
         .catch(error => {
-            if (error.code==23505){
+            if (error.rowCount==0){
                 console.log("signup - duplicate email");
                 return callback({
                     code: 409,
@@ -265,7 +273,7 @@ const implementations = {
     },
 
     /** LOGIN -  controlla dati utente e restituisce il token JWT*/
-    login: (call, callback) => {
+    login: (call:any, callback:any) => {
 
         if (!call.request.email || !call.request.password){
             console.log("login - invalid input");
@@ -277,7 +285,7 @@ const implementations = {
         }
         
         getPasswordAndSaltOfUser(call.request.email)
-        .then(response => {
+        .then((response:any) => {
             if (!response[0]){
                 console.log("login - wrong user");
                 return callback({
@@ -320,7 +328,7 @@ const implementations = {
     },
 
     /** REFRESH TOKEN -  rigenera il token JWT, controllando se è un token corretto e che sia in scadenza*/
-    refreshToken: (call, callback) =>{
+    refreshToken: (call:any, callback:any) =>{
         if (!call.request.email) {
             console.log("refreshToken - empty email");
             return callback({
@@ -339,9 +347,9 @@ const implementations = {
             });
         }
     
-        var payload
+        var payload: string|jwt.JwtPayload;
         try {
-            payload = jwt.verify(call.request.token, jwtKey)
+            payload = jwt.verify(call.request.token, config.jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
                 console.log("refreshToken - wrong token");
@@ -359,7 +367,9 @@ const implementations = {
             });
         }
         const nowUnixSeconds = Math.round(Number(new Date()) / 1000)
-        if (payload.exp - nowUnixSeconds > 30) {
+        
+        const { exp } = payload as jwt.JwtPayload
+        if (exp - nowUnixSeconds > 30) {
             console.log("refreshToken - too early");
             return callback({
                 code: 400,
@@ -377,7 +387,7 @@ const implementations = {
     },
 
     /** GET COUNTS - restituisce i valori dei conti dell'utente*/
-    getCounts: (call, callback) =>{
+    getCounts: (call:any, callback:any) =>{
         if (!call.request.email) {
             console.log("getCounts - empty email");
             return callback({
@@ -398,17 +408,18 @@ const implementations = {
     
         var payload
         try {
-            payload = jwt.verify(call.request.token, jwtKey)
+            payload = jwt.verify(call.request.token, config.jwtKey);
+            console.log(payload);
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
-                console.log("refreshToken - wrong token");
+                console.log("getCounts - wrong token");
                 return callback({
                     code: 401,
                     message: "wrong token",
                     status: grpc.status.INTERNAL
                 });
             }
-            console.log("refreshToken - internal error");
+            console.log("getCounts - internal error");
             return callback({
                 code: 500,
                 message: "internal error",
@@ -417,7 +428,7 @@ const implementations = {
         }
         
         getCountsValue(call.request.email)
-        .then(response => {
+        .then((response:any) => {
 
             console.log('getCounts - get counts value from db');
             
@@ -437,7 +448,7 @@ const implementations = {
     },
 
     /** DEPOSIT - deposito sul conto dell'utente di una somma nella valuta scelta*/
-    deposit: (call, callback) =>{
+    deposit: (call:any, callback:any) =>{
         if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token){
             console.log("deposit - invalid input");
             return callback({
@@ -448,7 +459,7 @@ const implementations = {
         }
 
         try { 
-            jwt.verify(call.request.token, jwtKey)
+            jwt.verify(call.request.token, config.jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
                 console.log("deposit - wrong token");
@@ -513,7 +524,7 @@ const implementations = {
     },
 
     /** WITHDRAW - prelievo dal conto dell'utente di una somma nella valuta scelta*/
-    withdraw: (call, callback) =>{
+    withdraw: (call:any, callback:any) =>{
         if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token){
             console.log("withdraw - invalid input");
             return callback({
@@ -524,7 +535,7 @@ const implementations = {
         }
         
         try { 
-            jwt.verify(call.request.token, jwtKey)
+            jwt.verify(call.request.token, config.jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
                 console.log("withdraw - wrong token");
@@ -579,7 +590,7 @@ const implementations = {
             });
         })
         .catch(error => {
-            if (error.code==22012){
+            if (error.rowCount==0){
                 console.log("withdraw - not enought");
                 return callback({
                     code: 400,
@@ -599,7 +610,7 @@ const implementations = {
     },
 
     /** BUY - sposta una determinata quantità da un conto all'altro applicando il tasso di cambio*/
-    buy: (call, callback) =>{
+    buy: (call:any, callback:any) =>{
         if (!call.request.email || !call.request.symbol || !call.request.value || !call.request.token){
             console.log("buy - invalid input");
             return callback({
@@ -628,7 +639,7 @@ const implementations = {
         }
 
         try {
-            jwt.verify(call.request.token, jwtKey)
+            jwt.verify(call.request.token, config.jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
                 console.log("buy - wrong token");
@@ -652,10 +663,11 @@ const implementations = {
             from = 'USD';
         }
 
-        const descriptorExchange = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/exchange.proto")))
-        const grpcClient = new descriptorExchange.greeter.Greeter(config.exchangeIP+":9000", grpc.credentials.createInsecure())
+        
+        const descriptor = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../../../proto/exchange.proto")));
+        const grpcClient = new descriptor.exchangePackege.ExchangeService(config.exchangeHost+":"+config.exchangePort, grpc.credentials.createInsecure());
     
-        grpcClient.exchange({value: call.request.value, from: to, to: from}, (err, data) => {
+        grpcClient.exchange({value: call.request.value, from: to, to: from}, (err:any, data:any) => {
             if (err){
                 console.log("exchange error:"+err)
                 data = 0
@@ -686,7 +698,7 @@ const implementations = {
                 });
             })
             .catch(error => {
-                if (error.code==22012){
+                if (error.rowCount==0){
                     console.log("buy - not enought");
                     return callback({
                         code: 400,
@@ -707,7 +719,7 @@ const implementations = {
     },
 
     /** LIST TRANSACTIONS - restituisce la lista di transazioni di un utente con la possiblità di filtrarle */
-    listTransactions: (call, callback) =>{ 
+    listTransactions: (call:any, callback:any) =>{ 
         if (!call.request.email || !call.request.token){
             console.log("listTransactions - empty required input");
             return callback({
@@ -754,7 +766,7 @@ const implementations = {
         }
 
         if (call.request.value<=0){
-            console.log("buy - invalid value");
+            console.log("listTransactions - invalid value");
             return callback({
                 code: 400,
                 message: "value not correct",
@@ -763,17 +775,17 @@ const implementations = {
         }
 
         try {
-            jwt.verify(call.request.token, jwtKey)
+            jwt.verify(call.request.token, config.jwtKey)
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
-                console.log("buy - wrong token");
+                console.log("listTransactions - wrong token");
                 return callback({
                     code: 401,
                     message: "wrong token",
                     status: grpc.status.INTERNAL
                 });
             }
-            console.log("buy - internal error");
+            console.log("listTransactions - internal error");
             return callback({
                 code: 500,
                 message: "internal error",
@@ -802,13 +814,11 @@ const implementations = {
 
 
 /** avvio users grpc server */
-const descriptorUsers = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/users.proto")))
+const descriptorUsers = (grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../../../proto/users.proto"))) as unknown) as ProtoGrpcType
 const server = new grpc.Server()
 server.bindAsync = promisify(server.bindAsync)
-server.bindAsync('0.0.0.0:'+PORT, grpc.ServerCredentials.createInsecure())
-  .then(() => {
-    server.addService(descriptorUsers.greeter.Greeter.service, implementations)
+server.bindAsync('0.0.0.0:'+config.usersPort, grpc.ServerCredentials.createInsecure(), (error:Error, port: number)=>{
+    server.addService(descriptorUsers.usersPackage.usersService.service, implementations)
     server.start()
-    console.log("users grpc server started on port %O", PORT)
-  })
-  .catch(console.log)
+    console.log("users grpc server started on port"+ config.usersPort)
+})

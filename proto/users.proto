@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package greeter;
+package usersPackage;
 
-service Greeter {
+service usersService {
     /* gestione utente*/
     rpc signup (signupRequest) returns (tokenReply) {}
     rpc login (loginRequest) returns (tokenReply) {}

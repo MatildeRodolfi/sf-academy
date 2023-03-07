@@ -1,3 +1,6 @@
 /node_modules
 /db/data
-/build
+/proto/build
+/api/build
+/users/build
+/exchange/build

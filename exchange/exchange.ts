@@ -1,14 +1,17 @@
 const protoLoader = require("@grpc/proto-loader")
 const grpc = require("@grpc/grpc-js")
-const { join } = require("path")
-const { promisify } = require("util")
-const PORT = 9000
+import { join } from "path";
+import { promisify } from "util";
+import convert from 'xml-js';
+import { config } from '../config'
+
+import { ExchangeServiceHandlers } from '../proto/build/exchangePackege/ExchangeService';
+import { ProtoGrpcType } from '../proto/build/exchange';
 
 var https = require('https');
-const convert = require('xml-js');
 
-const implementations = {
-    exchange: (call, callback) => {
+const implementations:ExchangeServiceHandlers = {
+    exchange: (call:any, callback:any) => {
         if (!call.request.value || !call.request.from || !call.request.to){
             console.log("invalid input");
             return callback({
@@ -36,14 +39,14 @@ const implementations = {
 
         var data:string = '';
         var ris:number = -1;
-        https.get('https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml?46f0dd7988932599cb1bcac79a10a16a}', function(res) {
+        https.get(config.ECBlink, function(res:any) {
             if (res.statusCode >= 200 && res.statusCode < 400) {
-                res.on('data', function(data_) { data += data_.toString(); });
+                res.on('data', function(data_:any) { data += data_.toString(); });
                 res.on('end', function() {
                     const jsonData = JSON.parse(convert.xml2json(data, {compact: true, spaces: 2}));
                     const cubeArray = jsonData['gesmes:Envelope']['Cube']['Cube']['Cube'];
                     var rate:number = -1;
-                    cubeArray.forEach((element) => {
+                    cubeArray.forEach((element:any) => {
                         var currency:string = element['_attributes'].currency;
                         if (currency=='USD'){
                             rate = element['_attributes'].rate;
@@ -85,13 +88,13 @@ const implementations = {
     }
 }
 
-const descriptor = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/exchange.proto")))
+
+const descriptor = (grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../../../proto/exchange.proto"))) as unknown) as ProtoGrpcType;
 const server = new grpc.Server()
 server.bindAsync = promisify(server.bindAsync)
-server.bindAsync('0.0.0.0:'+PORT, grpc.ServerCredentials.createInsecure())
-  .then(() => {
-    server.addService(descriptor.greeter.Greeter.service, implementations)
+server.bindAsync('0.0.0.0:'+config.exchangePort, grpc.ServerCredentials.createInsecure(), (error:Error, port:number)=>{
+    server.addService(descriptor.exchangePackege.ExchangeService.service, implementations)
     server.start()
-    console.log("exchange grpc server started on port %O", PORT)
-  })
-  .catch(console.log)
+    console.log("exchange grpc server started on port"+config.exchangePort)
+})
+  

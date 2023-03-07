@@ -1,10 +1,10 @@
-FROM node:18-alpine
+FROM node:latest
 ENV NODE_ENV=production
 
 WORKDIR /app
 
-COPY ["package.json", "package-lock.json", "./"]
+COPY . .
 
+RUN apt-get update && apt-get -y install default-jre
 RUN npm install --production
 
-COPY . .

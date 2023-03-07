@@ -19,6 +19,9 @@ services:
     volumes:
       - ./:/app
       - /app/node_modules
+      - /app/exchange/build/
+      - /app/users/build/
+      - /app/API/build/
     command: npm run exchange
 
   users:
@@ -38,6 +41,9 @@ services:
     volumes:
       - ./:/app
       - /app/node_modules
+      - /app/exchange/build/
+      - /app/users/build/
+      - /app/API/build/
     command: npm run users
 
   api:
@@ -53,8 +59,10 @@ services:
     volumes:
       - ./:/app
       - /app/node_modules
+      - /app/exchange/build/
+      - /app/users/build/
+      - /app/API/build/
     command: npm run api
 
 volumes:
   db:
-    driver: local
