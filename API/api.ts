@@ -4,10 +4,11 @@ import express from "express"
 import bodyParser from "body-parser"
 import { initialize } from "express-openapi"
 import cors from 'cors'
-import { config } from '../config'
-
 const protoLoader = require("@grpc/proto-loader");
-const descriptor = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../../../proto/users.proto")));
+import { config } from './config/config'
+
+
+const descriptor = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/users.proto")));
 const grpcClient = new descriptor.usersPackage.usersService(config.usersHost+":"+config.usersPort, grpc.credentials.createInsecure());
 
 const operations = {
@@ -182,7 +183,7 @@ initialize({
   errorMiddleware: (err:any, req:any, res:any, next:any) => {
     res.json(err)
   },
-  apiDoc: join(__dirname, "../../../exchange-app/apiDoc.yml"),
+  apiDoc: join(__dirname, "../apiDoc.yml"),
   dependencies: {
     log: console.log
   },

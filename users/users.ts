@@ -4,10 +4,10 @@ import jwt from "jsonwebtoken";
 import crypt from "crypto";
 import { join } from "path";
 import { promisify } from "util";
-import { config } from '../config';
+import { config } from './config/config';
 
-import { usersServiceHandlers } from '../proto/build/usersPackage/usersService';
-import { ProtoGrpcType } from '../proto/build/users';
+import { usersServiceHandlers } from './proto/build/usersPackage/usersService';
+import { ProtoGrpcType } from './proto/build/users';
 
 
 /** HASHING PASSWORD - cripta la pw e restituisce hash e salt*/
@@ -664,7 +664,7 @@ const implementations:usersServiceHandlers = {
         }
 
         
-        const descriptor = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../../../proto/exchange.proto")));
+        const descriptor = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/exchange.proto")));
         const grpcClient = new descriptor.exchangePackege.ExchangeService(config.exchangeHost+":"+config.exchangePort, grpc.credentials.createInsecure());
     
         grpcClient.exchange({value: call.request.value, from: to, to: from}, (err:any, data:any) => {
@@ -814,11 +814,11 @@ const implementations:usersServiceHandlers = {
 
 
 /** avvio users grpc server */
-const descriptorUsers = (grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../../../proto/users.proto"))) as unknown) as ProtoGrpcType
+const descriptorUsers = (grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/users.proto"))) as unknown) as ProtoGrpcType
 const server = new grpc.Server()
 server.bindAsync = promisify(server.bindAsync)
-server.bindAsync('0.0.0.0:'+config.usersPort, grpc.ServerCredentials.createInsecure(), (error:Error, port: number)=>{
-    server.addService(descriptorUsers.usersPackage.usersService.service, implementations)
-    server.start()
-    console.log("users grpc server started on port"+ config.usersPort)
+server.bindAsync('0.0.0.0:'+ config.usersPort, grpc.ServerCredentials.createInsecure(), (error:Error, port: number)=>{
+    server.addService(descriptorUsers.usersPackage.usersService.service, implementations);
+    server.start();
+    console.log("users grpc server started on port "+ config.usersPort)
 })

@@ -3,15 +3,15 @@ const grpc = require("@grpc/grpc-js")
 import { join } from "path";
 import { promisify } from "util";
 import convert from 'xml-js';
-import { config } from '../config'
+import { config } from './config/config'
 
-import { ExchangeServiceHandlers } from '../proto/build/exchangePackege/ExchangeService';
-import { ProtoGrpcType } from '../proto/build/exchange';
+import { ExchangeServiceHandlers } from './proto/build/exchangePackege/ExchangeService';
+import { ProtoGrpcType } from './proto/build/exchange';
 
 var https = require('https');
 
 const implementations:ExchangeServiceHandlers = {
-    exchange: (call:any, callback:any) => {
+    exchange: (call:any, callback:Function) => {
         if (!call.request.value || !call.request.from || !call.request.to){
             console.log("invalid input");
             return callback({
@@ -89,7 +89,7 @@ const implementations:ExchangeServiceHandlers = {
 }
 
 
-const descriptor = (grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../../../proto/exchange.proto"))) as unknown) as ProtoGrpcType;
+const descriptor = (grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/exchange.proto"))) as unknown) as ProtoGrpcType;
 const server = new grpc.Server()
 server.bindAsync = promisify(server.bindAsync)
 server.bindAsync('0.0.0.0:'+config.exchangePort, grpc.ServerCredentials.createInsecure(), (error:Error, port:number)=>{

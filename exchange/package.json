@@ -1,0 +1,30 @@
+{
+  "name": "exchange-microservice",
+  "version": "1.0.0",
+  "description": "exchange currency",
+  "main": "build/exchange.js",
+  "scripts": {
+    "postinstall": "npx proto-loader-gen-types --longs=String --enums=String --defaults --oneofs --grpcLib=@grpc/grpc-js --outDir=./proto/build ./proto/*.proto && npx tsc",
+    "start": "node ./build/exchange.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MatildeRodolfi/sf-academy.git"
+  },
+  "author": "Matilde Rodolfi",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MatildeRodolfi/sf-academy/issues"
+  },
+  "homepage": "https://github.com/MatildeRodolfi/sf-academy#readme",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.8.11",
+    "@grpc/proto-loader": "^0.7.5",
+    "dotenv": "^16.0.3",
+    "https": "^1.0.0",
+    "path": "^0.12.7",
+    "typescript": "^4.9.5",
+    "util": "^0.12.5",
+    "xml-js": "^1.6.11"
+  }
+}

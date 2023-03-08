@@ -1,0 +1,31 @@
+{
+  "name": "api-microservice",
+  "version": "1.0.0",
+  "description": "api",
+  "main": "build/api.js",
+  "scripts": {
+    "postinstall": "npx tsc",
+    "start": "node ./build/api.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MatildeRodolfi/sf-academy.git"
+  },
+  "author": "Matilde Rodolfi",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MatildeRodolfi/sf-academy/issues"
+  },
+  "homepage": "https://github.com/MatildeRodolfi/sf-academy#readme",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.8.12",
+    "@grpc/proto-loader": "^0.7.5",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-openapi": "^12.1.0",
+    "path": "^0.12.7",
+    "typescript": "^4.9.5"
+  }
+}
