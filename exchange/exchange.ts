@@ -8,7 +8,7 @@ import { config } from './config/config'
 import { ExchangeServiceHandlers } from './proto/build/exchangePackege/ExchangeService';
 import { ProtoGrpcType } from './proto/build/exchange';
 
-var https = require('https');
+const https = require('https');
 
 const implementations:ExchangeServiceHandlers = {
     exchange: (call:any, callback:Function) => {
@@ -17,7 +17,7 @@ const implementations:ExchangeServiceHandlers = {
             return callback({
                 code: 400,
                 message: "one or more empty input",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
         if (call.request.value<=0){
@@ -25,7 +25,7 @@ const implementations:ExchangeServiceHandlers = {
             return callback({
                 code: 400,
                 message: "invalid value",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
         if ((call.request.from!='USD' && call.request.from!='EUR') || (call.request.to!='USD' && call.request.to!='EUR')){
@@ -33,14 +33,14 @@ const implementations:ExchangeServiceHandlers = {
             return callback({
                 code: 400,
                 message: "invalid currency",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
-        var data:string = '';
-        var ris:number = -1;
         https.get(config.ECBlink, function(res:any) {
-            if (res.statusCode >= 200 && res.statusCode < 400) {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+                var data:string = '';
+
                 res.on('data', function(data_:any) { data += data_.toString(); });
                 res.on('end', function() {
                     const jsonData = JSON.parse(convert.xml2json(data, {compact: true, spaces: 2}));
@@ -54,6 +54,8 @@ const implementations:ExchangeServiceHandlers = {
                     });
 
                     if (rate>0){
+                        var ris:number = -1;
+
                         if (call.request.from=='EUR'){
                             ris = call.request.value * rate;
                         }
@@ -95,6 +97,6 @@ server.bindAsync = promisify(server.bindAsync)
 server.bindAsync('0.0.0.0:'+config.exchangePort, grpc.ServerCredentials.createInsecure(), (error:Error, port:number)=>{
     server.addService(descriptor.exchangePackege.ExchangeService.service, implementations)
     server.start()
-    console.log("exchange grpc server started on port"+config.exchangePort)
+    console.log("exchange grpc server started on port "+config.exchangePort)
 })
   

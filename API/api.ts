@@ -16,7 +16,7 @@ const operations = {
     console.log("signup acquired")
     grpcClient.signup({email: req.body.email, password: req.body.password, name: req.body.name, iban: req.body.iban}, (err:any, data:any) => {
       if (err){
-        console.log("signup error: "+err.details)
+        console.log("signup error: "+err.details) 
         var details = err.details;
         return res.status(400).json({
           details

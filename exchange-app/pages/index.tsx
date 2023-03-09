@@ -1,12 +1,33 @@
-import Head from 'next/head'
-import styles from '@/styles/Home.module.css'
-import { useState, useEffect, Ref } from 'react'
-import React, { Component }  from 'react';
-import type{GetCountsResponse, ListResponse} from "../openAPI/index"
-import {UserApi, TransactionApi} from "../openAPI/index"
 
-var usersApi = new UserApi;
-var transactionApi = new TransactionApi
+
+import Head from 'next/head';
+import styles from '@/styles/Home.module.css';
+import { useState, useEffect, Ref } from 'react';
+import React, { Component }  from 'react';
+import type{ListResponse} from "../openAPI/index";
+import {UserApi, TransactionApi} from "../openAPI/index";
+
+var usersApi:UserApi = new UserApi;
+var transactionApi:TransactionApi = new TransactionApi;
+
+
+
+type sortType = {
+  type:string, 
+  ascending:boolean
+}
+
+/** Type with all possible filters in transaction*/
+type filterType = {
+  from:string|undefined, 
+  to:string|undefined, 
+  valueMin:number|undefined,
+  valueMax:number|undefined, 
+  dateMin:string|undefined,
+  dateMax:string|undefined, 
+  rateMin:number|undefined, 
+  rateMax:number|undefined
+};
 
 /*--------------------------------
 ----------------------------------
@@ -14,29 +35,33 @@ var transactionApi = new TransactionApi
 ----------------------------------
 ---------------------------------*/
 
+/** ERROR VISUALIZATION*/
 function ErrorInCard(props:{error: string}) {
   if (props.error==""){
     return null;
   }
   else{
-    return <span className={[styles.error].join(" ")}>{props.error}</span>;
+    return <span className={styles.error}>{props.error}</span>;
   }
 }
 
 
 /*--------------------------------
 ----------------------------------
-         SIGNUP & LOGIN CARD
+            LOGIN & SIGNUP
 ----------------------------------
 ---------------------------------*/
 
-class LoginDeposit extends React.Component<{visible:boolean, close:Function, logged:Function, goSignup:Function}, any> {
+/** LOGIN CARD */
+class Login extends React.Component<{visible:boolean, close:Function, logged:Function, goSignup:Function}, any> {
+  
   constructor(props:{visible:boolean, close:Function, logged:Function, goSignup:Function}) {
     super(props);
     this.state = {
       error: ""
     };
   }
+
 
   login(e: React.SyntheticEvent){
     e.preventDefault();
@@ -45,49 +70,44 @@ class LoginDeposit extends React.Component<{visible:boolean, close:Function, log
       email: { value: string };
       password: { value: string };
     };
-    const mail = target.email.value;
+
+    const mail:string = target.email.value;
     if (!mail){
       this.setState({ error: "email reaquired"});
       return;
     }
-    else{
-      this.setState({ error: ""});
-    }
 
-    const password = target.password.value;
+    const password:string = target.password.value;
     if (!password){
       this.setState({ error: "password required"});
       return;
     }
-    else{
-      this.setState({ error: ""});
-    }
+      
+    this.setState({ error: ""});
 
-    usersApi.login({email: mail,password: password})
+    usersApi.login({email: mail, password: password})
     .then((res:any) => {
-      console.log(res);
-      sessionStorage.setItem("email", mail);
-      sessionStorage.setItem("token", res.data.token);
-      this.props.logged();
-      this.setState({ error: ""});
+      this.props.logged(mail, res.data.token);
     })
-    .catch(()=>{
-      this.setState({ error: "wrong email or token"});
+    .catch((error:any)=>{
+      this.setState({ error: error.response.data.details});
     })
   }
 
   closeCard(e: React.FormEvent<HTMLDivElement>){
+    this.setState({ error: ""});
     this.props.close();
   }
 
   signup(e: React.FormEvent<HTMLButtonElement>){
+    this.setState({ error: ""});
     this.props.goSignup();
   }
 
   render() {
     if (this.props.visible){
       return (
-        <div className={[styles.cardDiv].join(" ")}>
+        <div className={styles.cardDiv}>
           <p className={styles.bigCenterElement}>Login</p>
 
           <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
@@ -129,7 +149,9 @@ class LoginDeposit extends React.Component<{visible:boolean, close:Function, log
   }
 }
 
-class SignupDeposit extends React.Component<{visible:boolean, close:Function, logged:Function, goLogin:Function}, any> {
+/** SIGNUP CARD */
+class Signup extends React.Component<{visible:boolean, close:Function, logged:Function, goLogin:Function}, any> {
+  
   constructor(props:{visible:boolean, close:Function, logged:Function, goLogin:Function}) {
     super(props);
     this.state = {
@@ -147,31 +169,32 @@ class SignupDeposit extends React.Component<{visible:boolean, close:Function, lo
       name: { value: string };
       iban: { value: string };
     };
-    const mail = target.email.value;
+
+    const mail:string = target.email.value;
     if (!mail){
       this.setState({ error: "email reaquired"});
       return;
     }
 
-    const password = target.password.value;
+    const password:string = target.password.value;
     if (!password){
       this.setState({ error: "password required"});
       return;
     }
 
-    const password2 = target.password2.value;
+    const password2:string = target.password2.value;
     if (password!=password2){
       this.setState({ error: "Passwords do not match"});
       return;
     }
 
-    const name = target.name.value;
+    const name:string = target.name.value;
     if (!name){
       this.setState({ error: "name required"});
       return;
     }
 
-    const iban = target.iban.value;
+    const iban:string = target.iban.value;
     if (!iban){
       this.setState({ error: "iban required"});
       return;
@@ -179,36 +202,29 @@ class SignupDeposit extends React.Component<{visible:boolean, close:Function, lo
 
     this.setState({ error: ""});
 
-    usersApi.signup({
-      email: mail, 
-      password: password,
-      name: name,
-      iban: iban
-    })
+    usersApi.signup({ email: mail, password: password, name: name, iban: iban})
     .then((res:any) => {
-      console.log(res);
-      sessionStorage.setItem("email", mail);
-      sessionStorage.setItem("token", res.data.token);
-      this.setState({ error: ""});
-      this.props.logged();
+      this.props.logged(mail, res.data.token);
     })
-    .catch(()=>{
-      this.setState({ error: "mail already userd"});
+    .catch((error:any)=>{
+      this.setState({ error: error.response.data.details});
     })
   }
 
   closeCard(e: React.FormEvent<HTMLDivElement>){
+    this.setState({ error: ""});
     this.props.close();
   }
 
   login(e: React.FormEvent<HTMLButtonElement>){
+    this.setState({ error: ""});
     this.props.goLogin();
   }
 
   render() {
     if (this.props.visible){
       return (
-        <div className={[styles.cardDiv].join(" ")}>
+        <div className={styles.cardDiv}>
           <p className={styles.bigCenterElement}>Login</p>
 
           <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
@@ -265,13 +281,14 @@ class SignupDeposit extends React.Component<{visible:boolean, close:Function, lo
 
 /*--------------------------------
 ----------------------------------
-          COUNTS CARD
+          ACTIONS IN COUNTS
 ----------------------------------
 ---------------------------------*/
 
-class CardDeposit extends React.Component<{visible:boolean, close:Function}, any> {
+/** DEPOSIT CARD - deposit on the count of choice*/
+class DepositCard extends React.Component<{visible:boolean, email:string, token:string, close:Function}, any> {
   
-  constructor(props:{visible:boolean, close:Function}) {
+  constructor(props:{visible:boolean, email:string, token:string, close:Function}) {
     super(props);
     this.state = {
       error: ""
@@ -280,53 +297,46 @@ class CardDeposit extends React.Component<{visible:boolean, close:Function}, any
 
   save(e: React.SyntheticEvent){
     e.preventDefault();
-    var value:number = 0;
-    var to:string = "EUR";
 
     const target = e.target as typeof e.target & {
       quantity: { value: number };
       to: { value: string };
     };
-    const quantity = target.quantity.value.toString();
-    const toValue = target.to.value;
-    to=toValue;
-    value=+quantity;
-    if (!quantity){
-      this.setState({ error: "quantity error"});
-    }
-    else{
-      this.setState({ error: ""});
-      
-      //make deposit
-      var email = sessionStorage.getItem("email");
-      var token = sessionStorage.getItem("token");
-      if (!email){email=""}
-      if (!token){token=""}
 
-      transactionApi.deposit({
-        email: email,
-        value: value,
-        symbol: to, 
-        token: token
-      })
-      .then((res:any) => {
-        this.props.close();
-      })
-      .catch(() => {
-        this.setState({ error: "error with saving"});
-        console.error;
-      })
+    var value:number = target.quantity.value;
+    var to:string = target.to.value;
+
+    if (!value || value<=0){
+      this.setState({ error: "quantity error"});
+      return;
     }
+   
+    this.setState({ error: ""});
+
+    transactionApi.deposit({
+      email: this.props.email,
+      value: value.toString(),
+      symbol: to, 
+      token: this.props.token
+    })
+    .then(() => {
+      this.props.close();
+    })
+    .catch((error:any) => {
+      this.setState({ error: error.response.data.details});
+      console.error;
+    })
   }
 
   closeCard(e: React.FormEvent<HTMLDivElement>){
+    this.setState({ error: ""});
     this.props.close();
   }
 
   render() {
     if (this.props.visible){
       return (
-        <div className={[styles.cardDiv].join(" ")}>
+        <div className={styles.cardDiv}>
   
           <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -365,9 +375,10 @@ class CardDeposit extends React.Component<{visible:boolean, close:Function}, any
   }
 }
 
-class CardBuy extends React.Component<{visible:boolean, close:Function}, any> {
+/** BUY CARD - buy a currency of choice*/
+class BuyCard extends React.Component<{visible:boolean, email:string, token:string, close:Function}, any> {
   
-  constructor(props:{visible:boolean, close:Function}) {
+  constructor(props:{visible:boolean, email:string, token:string, close:Function}) {
     super(props);
     this.state = {
       error: ""
@@ -377,52 +388,44 @@ class CardBuy extends React.Component<{visible:boolean, close:Function}, any> {
   save(e: React.SyntheticEvent){
     e.preventDefault();
 
-    var value:number = 0;
-    var to:string = "EUR";
     const target = e.target as typeof e.target & {
       quantity: { value: number };
       to: { value: string };
     };
-    const quantity = target.quantity.value.toString();
-    const toValue = target.to.value;
-    to=toValue;
-    value=+quantity;
-    if (!quantity){
+  
+    var value:number = target.quantity.value;
+    var to:string  = target.to.value;
+    
+    if (!value || value<=0){
       this.setState({ error: "quantity error"});
     }
-    else{
-      this.setState({ error: ""});
-      
-      //buy
-      var email = sessionStorage.getItem("email");
-      var token = sessionStorage.getItem("token");
-      if (!email){email=""}
-      if (!token){token=""}
+    
+    this.setState({ error: ""});
 
-      transactionApi.buy({
-        email: email,
-        value: value,
-        symbol: to, 
-        token: token
-      })
-      .then((res:any) => {
-        this.props.close();
-      })
-      .catch(() => {
-        this.setState({ error: "error with saving"});
-        console.error;
-      })
-    }
+    transactionApi.buy({
+      email: this.props.email,
+      value: value.toString(),
+      symbol: to, 
+      token: this.props.token
+    })
+    .then((r) => {
+      this.props.close();
+    })
+    .catch((error:any) => {
+      this.setState({ error: error.response.data.details});
+      console.error;
+    })
   }
 
   closeCard(e: React.FormEvent<HTMLDivElement>){
+    this.setState({ error: ""});
     this.props.close();
   }
 
   render() {
     if (this.props.visible){
       return (
-        <div className={[styles.cardDiv].join(" ")}>
+        <div className={styles.cardDiv}>
   
           <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -461,9 +464,10 @@ class CardBuy extends React.Component<{visible:boolean, close:Function}, any> {
   }
 }
 
-class CardWithdraw extends React.Component<{visible:boolean, close:Function}, any> {
+/** WITHDRAW CARD - Withdraw from the count of choice*/
+class WithdrawCard extends React.Component<{visible:boolean, email:string, token:string, close:Function}, any> {
   
-  constructor(props:{visible:boolean, close:Function}) {
+  constructor(props:{visible:boolean, email:string, token:string, close:Function}) {
     super(props);
     this.state = {
       error: ""
@@ -473,53 +477,44 @@ class CardWithdraw extends React.Component<{visible:boolean, close:Function}, an
   save(e: React.SyntheticEvent){
     e.preventDefault();
 
-    var value:number = 0;
-    var to:string = "EUR";
     const target = e.target as typeof e.target & {
       quantity: { value: number };
       to: { value: string };
     };
-    const quantity = target.quantity.value.toString();
-    const toValue = target.to.value;
-    to=toValue;
-    value=+quantity;
-    if (!quantity){
+
+    var value:number = target.quantity.value;
+    var to:string = target.to.value;
+    
+    if (!value || value<=0){
       this.setState({ error: "quantity error"});
     }
-    else{
-      this.setState({ error: ""});
-      
-      //make withdraw
-      var email = sessionStorage.getItem("email");
-      var token = sessionStorage.getItem("token");
-      if (!email){email=""}
-      if (!token){token=""}
 
-      transactionApi.withdraw({
-        email: email,
-        value: value,
-        symbol: to, 
-        token: token
-      })
-      .then((res:any) => {
-        console.log(res);
-        this.props.close();
-      })
-      .catch(() => {
-        this.setState({ error: "error with saving"});
-        console.error;
-      })
-    }
+    this.setState({ error: ""});
+
+    transactionApi.withdraw({
+      email: this.props.email,
+      value: value.toString(),
+      symbol: to, 
+      token: this.props.token
+    })
+    .then(() => {
+      this.props.close();
+    })
+    .catch((error:any) => {
+      this.setState({ error: error.response.data.details});
+      console.error;
+    })
   }
 
   closeCard(e: React.FormEvent<HTMLDivElement>){
+    this.setState({ error: ""});
     this.props.close();
   }
 
   render() {
     if (this.props.visible){
       return (
-        <div className={[styles.cardDiv].join(" ")}>
+        <div className={styles.cardDiv}>
   
           <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -561,10 +556,11 @@ class CardWithdraw extends React.Component<{visible:boolean, close:Function}, an
 
 /*--------------------------------
 ----------------------------------
-              FILTER
+              FILTERS
 ----------------------------------
 ---------------------------------*/
 
+/** Button for visualizing the filter card */
 function FilterButton (props:{onClick:React.MouseEventHandler<HTMLButtonElement>}){
   return(
     <button className={[styles.trasparentButton, styles.filterDiv].join(" ")} onClick={props.onClick}>
@@ -575,20 +571,10 @@ function FilterButton (props:{onClick:React.MouseEventHandler<HTMLButtonElement>
   )
 }
 
-type updateFunctionType = (
-  from:string|undefined, 
-  to:string|undefined, 
-  valueMin:number|undefined,
-  valueMax:number|undefined, 
-  dateMin:string|undefined,
-  dateMax:string|undefined, 
-  rateMin:number|undefined, 
-  rateMax:number|undefined
-)=>void;
-
-class CardFilter extends React.Component<{visible:boolean, close:Function, updateFunction:updateFunctionType}, any> {
+/** FILTER CARD */
+class FilterCard extends React.Component<{visible:boolean, filters:filterType, close:Function, updateFunction:(filters:filterType)=>void}, any> {
   
-  constructor(props:{visible:boolean, close:Function, updateFunction:updateFunctionType}) {
+  constructor(props:{visible:boolean, filters:filterType, close:Function, updateFunction:(filters:filterType)=>void}) {
     super(props);
     this.state = {
       error: "",
@@ -609,83 +595,93 @@ class CardFilter extends React.Component<{visible:boolean, close:Function, updat
       rateMax: { value: number }
     };
 
-    var from:string|undefined, 
-    to:string|undefined, 
-    valueMin:number|undefined, 
-    valueMax:number|undefined, 
-    dateMin:string|undefined, 
-    dateMax:string|undefined, 
-    rateMin:number|undefined, 
-    rateMax:number|undefined;
+    var filters: filterType = {from:undefined, to:undefined, valueMax:undefined, valueMin:undefined, dateMax:undefined, dateMin:undefined, rateMax:undefined, rateMin:undefined};
 
-    from = target.from.value;
-    if (from=="all"){
-      from=undefined
+    filters.from = target.from.value;
+    if (filters.from==="all"){
+      filters.from=undefined
     }
 
-    to = target.to.value;
-    if (to=="all"){
-      to=undefined
+    filters.to = target.to.value;
+    if (filters.to==="all"){
+      filters.to=undefined
     }
 
-    valueMin = +target.valueMin.value;
-    if (valueMin==0){
-      valueMin=undefined
+    filters.valueMin = target.valueMin.value;
+    if (!filters.valueMin || filters.valueMin==0){
+      filters.valueMin=undefined
+    }
+    if (filters.valueMin && filters.valueMin<0){
+      this.setState({ error: "valueMin < 0"});
+      return;
     }
     
-    valueMax = +target.valueMax.value;
-    if (valueMax==0){
-      valueMax=undefined
+    filters.valueMax = target.valueMax.value;
+    if (!filters.valueMax || filters.valueMax==0){
+      filters.valueMax=undefined
+    }
+    if (filters.valueMax && filters.valueMax<0){
+      this.setState({ error: "valueMax < 0"});
+      return;
     }
 
-    if (valueMin && valueMax && valueMax<valueMin){
+    if (filters.valueMin && filters.valueMax && filters.valueMax<filters.valueMin){
       this.setState({ error: "valueMax < valueMin"});
       return;
     }
 
-    rateMin = +target.rateMin.value;
-    if (rateMin==0){
-      rateMin=undefined
+    filters.rateMin = target.rateMin.value;
+    if (!filters.rateMin || filters.rateMin==0){
+      filters.rateMin=undefined
+    }
+    if (filters.rateMin && filters.rateMin<0){
+      this.setState({ error: "rateMin < 0"});
+      return;
     }
     
-    rateMax = +target.rateMax.value;
-    if (rateMax==0){
-      rateMax=undefined
+    filters.rateMax = target.rateMax.value;
+    if (!filters.rateMax || filters.rateMax==0){
+      filters.rateMax=undefined
+    }
+    if (filters.rateMax && filters.rateMax<0){
+      this.setState({ error: "rateMax < 0"});
+      return;
     }
 
-    if (rateMin && rateMax && rateMax<rateMin){
+    if (filters.rateMin && filters.rateMax && filters.rateMax<filters.rateMin){
       this.setState({ error: "rateMax < rateMin"});
       return;
     }
 
-    dateMin = target.dateMin.value;
-    if (dateMin==""){
-      dateMin=undefined
+    filters.dateMin = target.dateMin.value;
+    if (!filters.dateMin || filters.dateMin==""){
+      filters.dateMin=undefined
     }
     
-    dateMax = target.dateMax.value;
-    if (dateMax==""){
-      dateMax=undefined
+    filters.dateMax = target.dateMax.value;
+    if (!filters.dateMax || filters.dateMax==""){
+      filters.dateMax=undefined
     }
 
-    if (dateMin && dateMax && dateMax<dateMin){
+    if (filters.dateMin && filters.dateMax && filters.dateMax<filters.dateMin){
       this.setState({ error: "dateMax < dateMin"});
       return;
     }
 
     this.setState({ error: ""});
-    this.props.updateFunction(from, to, valueMin, valueMax, dateMin, dateMax, rateMin, rateMax);
+    this.props.updateFunction(filters);
     this.props.close();
   }
 
   closeCard(e: React.FormEvent<HTMLDivElement>){
+    this.setState({ error: ""});
     this.props.close();
   }
 
   render() {
     if (this.props.visible){
       return (
-        <div className={[styles.cardDiv].join(" ")}>
+        <div className={styles.cardDiv}>
           <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
               <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
@@ -699,7 +695,7 @@ class CardFilter extends React.Component<{visible:boolean, close:Function, updat
               <div className={styles.centerX}>
                 <div className={styles.bigCenterElement}>
                     <legend>From: </legend>
-                    <select name="from" defaultValue="all">
+                    <select name="from" defaultValue={(!this.props.filters.from) ? "all" : this.props.filters.from}>
                       <option value="EUR">EUR </option>
                       <option value="USD">USD</option>
                       <option value="IBAN">IBAN</option>
@@ -708,7 +704,7 @@ class CardFilter extends React.Component<{visible:boolean, close:Function, updat
                 </div>
                 <div className={styles.bigCenterElement}>
                     <legend>To: </legend>
-                    <select name="to" defaultValue="all">
+                    <select name="to" defaultValue={(!this.props.filters.to) ? "all" : this.props.filters.to}>
                       <option value="EUR">EUR </option>
                       <option value="USD">USD</option>
                       <option value="IBAN">IBAN</option>
@@ -719,31 +715,31 @@ class CardFilter extends React.Component<{visible:boolean, close:Function, updat
 
               <div className={styles.centerX}>
                 <div className={styles.inputDiv}>
-                  <input name="valueMin" type="number" step="0.01" placeholder="Value Min"></input>
+                  <input name="valueMin" type="number" step="0.01" placeholder="Value Min" defaultValue={this.props.filters.valueMin} ></input>
                 </div>
 
                 <div className={styles.inputDiv}>
-                  <input name="valueMax" type="number" step="0.01" placeholder="Value Max"></input>
+                  <input name="valueMax" type="number" step="0.01" placeholder="Value Max" defaultValue={this.props.filters.valueMax}></input>
                 </div>
               </div>
                 
               <div className={styles.centerX}>
                 <div className={styles.inputDiv}>
-                  <input name="rateMin" type="number" step="0.01" placeholder="Rate Min"></input>
+                  <input name="rateMin" type="number" step="0.01" placeholder="Rate Min" defaultValue={this.props.filters.rateMin}></input>
                 </div>
 
                 <div className={styles.inputDiv}>
-                  <input name="rateMax" type="number" step="0.01" placeholder="Rate Max"></input>
+                  <input name="rateMax" type="number" step="0.01" placeholder="Rate Max" defaultValue={this.props.filters.rateMax}></input>
                 </div>
               </div>
 
               <div className={styles.centerX}>
                 <div className={styles.inputDiv}>
-                  <input name="dateMin" type="date" placeholder="Date Min"></input>
+                  <input name="dateMin" type="date" placeholder="Date Min" defaultValue={this.props.filters.dateMin}></input>
                 </div>
 
                 <div className={styles.inputDiv}>
-                  <input name="dateMax" type="date" placeholder="Date Max"></input>
+                  <input name="dateMax" type="date" placeholder="Date Max" defaultValue={this.props.filters.dateMax}></input>
                 </div>
               </div>
 
@@ -768,14 +764,15 @@ class CardFilter extends React.Component<{visible:boolean, close:Function, updat
 ----------------------------------
 ---------------------------------*/
 
-class BasicTable extends React.Component<{children:JSX.Element, changeSort:(type:string, ascending:boolean)=>void}, any> {
+/** BASIC TABLE - empty table for transactions */
+class BasicTable extends React.Component<{children:JSX.Element, changeSort:(sort:sortType)=>void}, any> {
   fromAscending:boolean = true;
   toAscending:boolean = true;
   valueAscending:boolean = true;
   rateAscending:boolean = true;
   dateAscending:boolean = true;
   
-  constructor(props:{children:JSX.Element, changeSort:(type:string, ascending:boolean)=>void}) {
+  constructor(props:{children:JSX.Element, changeSort:(sort:sortType)=>void}) {
     super(props);
     this.state = {
       fromA:false,
@@ -792,9 +789,7 @@ class BasicTable extends React.Component<{children:JSX.Element, changeSort:(type
   }
 
   sortByFrom(){
-    this.props.changeSort("from", this.fromAscending);
-
-    if (this.fromAscending){
+    if (!this.state.fromA){
       this.setState({
         fromA:true,
         fromD:false,
@@ -822,17 +817,11 @@ class BasicTable extends React.Component<{children:JSX.Element, changeSort:(type
         dateD:false
       })
     }
-    this.fromAscending = !this.fromAscending;
-    this.toAscending = true;
-    this.valueAscending = true;
-    this.rateAscending = true;
-    this.dateAscending = true;
+    this.props.changeSort({type:"from", ascending:this.state.fromA});
   }
 
   sortByTo(){
-    this.props.changeSort("to", this.toAscending);
-
-    if (this.toAscending){
+    if (!this.state.toA){
       this.setState({
         fromA:false,
         fromD:false,
@@ -860,17 +849,11 @@ class BasicTable extends React.Component<{children:JSX.Element, changeSort:(type
         dateD:false
       })
     }
-    this.fromAscending = true;
-    this.toAscending = !this.toAscending;
-    this.valueAscending = true;
-    this.rateAscending = true;
-    this.dateAscending = true;
+    this.props.changeSort({type:"to", ascending:this.state.toA});
   }
 
   sortByValue(){
-    this.props.changeSort("value", this.valueAscending);
-
-    if (this.valueAscending){
+    if (!this.state.valueA){
       this.setState({
         fromA:false,
         fromD:false,
@@ -898,17 +881,11 @@ class BasicTable extends React.Component<{children:JSX.Element, changeSort:(type
         dateD:false
       })
     }
-    this.fromAscending = true;
-    this.toAscending = true;
-    this.valueAscending = !this.valueAscending;
-    this.rateAscending = true;
-    this.dateAscending = true;
+    this.props.changeSort({type:"value", ascending:this.state.valueA});
   }
 
   sortByRate(){
-    this.props.changeSort("rate", this.rateAscending);
-
-    if (this.rateAscending){
+    if (!this.state.rateA){
       this.setState({
         fromA:false,
         fromD:false,
@@ -936,17 +913,11 @@ class BasicTable extends React.Component<{children:JSX.Element, changeSort:(type
         dateD:false
       })
     }
-    this.fromAscending = true;
-    this.toAscending = true;
-    this.valueAscending = true;
-    this.rateAscending = !this.rateAscending;
-    this.dateAscending = true;
+    this.props.changeSort({type:"rate", ascending:this.state.rateA});
   }
 
   sortByDate(){
-    this.props.changeSort("date", this.dateAscending);
-
-    if (this.dateAscending){
+    if (!this.state.dateA){
       this.setState({
         fromA:false,
         fromD:false,
@@ -974,11 +945,7 @@ class BasicTable extends React.Component<{children:JSX.Element, changeSort:(type
         dateD:true
       })
     }
-    this.fromAscending = true;
-    this.toAscending = true;
-    this.valueAscending = true;
-    this.rateAscending = true;
-    this.dateAscending = !this.dateAscending;
+    this.props.changeSort({type:"date", ascending:this.state.dateA});
   }
 
   render() {
@@ -1119,41 +1086,23 @@ class BasicTable extends React.Component<{children:JSX.Element, changeSort:(type
   }
 }
 
-function TransactionTable(props:{
-  filter:{
-    from:string|undefined, 
-    to:string|undefined, 
-    valueMin:number|undefined, 
-    valueMax:number|undefined, 
-    dateMin:string|undefined, 
-    dateMax:string|undefined, 
-    rateMin:number|undefined, 
-    rateMax:number|undefined
-  },
-  sort:{
-    type:string,
-    ascending:boolean
-  }})
-{
+/** TRANSACTION TABLE - dynamic table for transactions */
+function TransactionTable(props:{filter:filterType, sort:sortType, email:string, token: string}){
+  
   const [lista, setLista] = useState<any>();
 
   useEffect(() => {
-    var email = sessionStorage.getItem("email");
-    var token = sessionStorage.getItem("token");
-    if (!email){email=""}
-    if (!token){token=""}
-
     transactionApi.listTransactions({
-      email: email,
+      email: props.email,
       from: props.filter.from,
       to: props.filter.to,
-      valueMin: props.filter.valueMin,
-      valueMax: props.filter.valueMax,
+      valueMin: (props.filter.valueMin)?props.filter.valueMin.toString():undefined,
+      valueMax: (props.filter.valueMax)?props.filter.valueMax.toString():undefined,
       dateMin: props.filter.dateMin,
       dateMax: props.filter.dateMax,
-      rateMin: props.filter.rateMin,
-      rateMax: props.filter.rateMax,
-      token: token
+      rateMin: (props.filter.rateMin)?props.filter.rateMin.toString():undefined,
+      rateMax: (props.filter.rateMax)?props.filter.rateMax.toString():undefined,
+      token: props.token
     })
     .then((res:any) => {
       if (res.data){
@@ -1226,23 +1175,18 @@ function TransactionTable(props:{
 
 /*--------------------------------
 ----------------------------------
-                COUNTS
+              COUNTS
 ----------------------------------
 ---------------------------------*/
-
-function Counts(props:{update:boolean}){
+/** COUNTS - visualization of counts */
+function Counts(props:{update:boolean, email:string, token:string}){
   const [eur, setEur] = useState<number>(0);
   const [usd, setUsd] = useState<number>(0);
 
   useEffect(() => {
-    var email = sessionStorage.getItem("email");
-    var token = sessionStorage.getItem("token");
-    if (!email){email=""}
-    if (!token){token=""}
-
     usersApi.getCounts({
-      email: email, 
-      token: token
+      email: props.email, 
+      token: props.token
     })
     .then((res:any) => {
       var eurValue: number = +res.data.eur.toFixed(2);
@@ -1278,17 +1222,18 @@ function Counts(props:{update:boolean}){
 }
 
 
+/*--------------------------------
+----------------------------------
+              HOME
+----------------------------------
+---------------------------------*/
+/** HOME - basic app */
 export default function Home() {
-  const [filter, setFilter] = useState<{
-    from:string|undefined, 
-    to:string|undefined,
-    valueMin:number|undefined, 
-    valueMax:number|undefined,
-    dateMin:string|undefined,
-    dateMax:string|undefined, 
-    rateMin:number|undefined, 
-    rateMax:number|undefined
-  }>({
+  
+  const [email, setEmail] = useState<string>("");
+  const [token, setToken] = useState<string>("");
+
+  const [filter, setFilter] = useState<filterType>({
     from:undefined, 
     to:undefined,
     valueMin:undefined, 
@@ -1298,82 +1243,82 @@ export default function Home() {
     rateMin:undefined, 
     rateMax:undefined
   });
-  const [sort, setSort] = useState({
+  const [sort, setSort] = useState<sortType>({
     type:"date",
     ascending: true
   });
 
-  const [loginCardVIsible, setLoginCardVIsible] = useState(false);
-  const [signupCardVIsible, setSignupCardVIsible] = useState(false);
+  const [loginCardVisible, setLoginCardVisible] = useState<boolean>(false);
+  const [signupCardVisible, setSignupCardVisible] = useState<boolean>(false);
 
-  const [filterCardVIsible, setFilterCardVIsible] = useState(false);
-  const [depositCardVIsible, setDepositCardVIsible] = useState(false);
-  const [buyCardVIsible, setBuyCardVIsible] = useState(false);
-  const [withdrawCardVIsible, setWithdrawCardVIsible] = useState(false);
-  const [updateCounts, setUpdateCounts] = useState(false);
-  const [logged, setLogged] = useState(false);
+  const [filterCardVisible, setFilterCardVisible] = useState<boolean>(false);
+  const [depositCardVisible, setDepositCardVisible] = useState<boolean>(false);
+  const [buyCardVisible, setBuyCardVisible] = useState<boolean>(false);
+  const [withdrawCardVisible, setWithdrawCardVisible] = useState<boolean>(false);
+  const [updateCounts, setUpdateCounts] = useState<boolean>(false);
+  const [logged, setLogged] = useState<boolean>(false);
 
-  function updateFilter(from:string|undefined, to:string|undefined, valueMin:number|undefined, valueMax:number|undefined, dateMin:string|undefined, dateMax:string|undefined, rateMin:number|undefined, rateMax:number|undefined){
-    setFilter({from, to, valueMin, valueMax, dateMin, dateMax, rateMin, rateMax});
+
+  function updateFilter(filters:filterType){
+    setFilter(filters);
     setUpdateCounts(!updateCounts);
   }
 
-  function updateSort(type:string, ascending:boolean){
-    setSort({type, ascending});
+  function updateSort(sort:sortType){
+    setSort(sort);
     setUpdateCounts(!updateCounts);
   }
 
   function openCardLogin(){
-    setLoginCardVIsible(true); 
+    setLoginCardVisible(true); 
   }
 
   function openCardSignup(){
-    setSignupCardVIsible(true); 
+    setSignupCardVisible(true); 
   }
 
   function openCardDeposit(){
-    setDepositCardVIsible(true); 
+    setDepositCardVisible(true); 
   }
 
   function openCardBuy(){
-    setBuyCardVIsible(true); 
+    setBuyCardVisible(true); 
   }
 
   function openCardWithdraw(){
-    setWithdrawCardVIsible(true); 
+    setWithdrawCardVisible(true); 
   }
 
   function openCardFilter(){
-    setFilterCardVIsible(true); 
+    setFilterCardVisible(true); 
   }
 
   function closeCardLogin(){
-    setLoginCardVIsible(false); 
+    setLoginCardVisible(false); 
   }
 
   function closeCardSignup(){
-    setSignupCardVIsible(false); 
+    setSignupCardVisible(false); 
   }
 
   function closeCardDeposit(){
-    setDepositCardVIsible(false); 
-    updateSort("date", false);
+    setDepositCardVisible(false); 
+    updateSort({type:"date", ascending:false});
   }
 
   function closeCardBuy(){
-    setBuyCardVIsible(false); 
-    updateSort("date", false);
+    setBuyCardVisible(false); 
+    updateSort({type:"date", ascending:false});
   }
 
   function closeCardWithdraw(){
-
-    setWithdrawCardVIsible(false); 
-    updateSort("date", false);
+    setWithdrawCardVisible(false); 
+    updateSort({type:"date", ascending:false});
   }
 
   function closeCardFilter(){
-    setFilterCardVIsible(false); 
-    updateSort("date", false);
+    setFilterCardVisible(false); 
+    updateSort({type:"date", ascending:false});
   }
 
   function goLogin(){
@@ -1386,90 +1331,94 @@ export default function Home() {
     openCardSignup();
   }
 
-  function loggedIn(){
-    setLogged(true);
+  function loggedIn(email:string, token:string){
+    setEmail(email);
+    setToken(token);
     closeCardSignup();
     closeCardLogin();
   }
 
   function logout(){
-    setLogged(false);
-    sessionStorage.clear();
+    setEmail("");
+    setToken("");
+    closeCardDeposit();
+    closeCardBuy();
+    closeCardWithdraw();
+    closeCardFilter();
   }
 
 
-    return (
-      <>
-        <Head>
-          <title>Exchange App</title>
-          <meta name="description" content="Generated by create next app" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <link rel="icon" href="/graph-up.svg" />
-        </Head>
+  return (
+    <>
+      <Head>
+        <title>Exchange App</title>
+        <meta name="description" content="Generated by create next app" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/graph-up.svg" />
+      </Head>
 
-        <div className={styles.navBar}>
-          <a href="/">
-              <img className={styles.logo} alt="exhange" src="/graph-up.svg" decoding="async" data-nimg="fixed"></img>
-          </a>
-          {logged ? (
-            <div>
-              <button onClick={logout}>Logout</button>
-            </div>
-          ) : (
-            <div>
-              <button onClick={openCardSignup}>Sign Up</button>
-              <button onClick={openCardLogin}>Login</button>
-              </div>  
-          )}
-        </div>
-
-        <CardDeposit visible={depositCardVIsible} close={closeCardDeposit}/>
-        <CardBuy visible={buyCardVIsible} close={closeCardBuy}/>
-        <CardWithdraw visible={withdrawCardVIsible} close={closeCardWithdraw}/>
-        
-        <CardFilter visible={filterCardVIsible} close={closeCardFilter} updateFunction={updateFilter}/>
-
-        <LoginDeposit visible={loginCardVIsible} close={closeCardLogin} logged={loggedIn} goSignup={goSignup}/>
-        <SignupDeposit visible={signupCardVIsible} close={closeCardSignup} logged={loggedIn} goLogin={goLogin}/>
-
-        {logged ? (
-          <main className={styles.main}>
-
-            <Counts update={updateCounts}/>
-
-            <div className={styles.centerX}>
-              <button onClick={openCardDeposit}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                  <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-                </svg>
-                <span className={styles.marginLeft}>Deposit</span>
-              </button>
-              <button onClick={openCardBuy}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                  <path fillRule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/>
-                </svg>
-                <span className={styles.marginLeft}>Buy</span>
-              </button>
-              <button onClick={openCardWithdraw}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                  <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
-                </svg>
-                <span className={styles.marginLeft}>Withdraw</span>
-              </button>
-            </div>
-
-            <FilterButton onClick={openCardFilter}/>
-            <BasicTable changeSort={updateSort}>
-              <TransactionTable filter={filter} sort={sort}/>
-            </BasicTable>
-          </main>
-        ): (
-          <main className={styles.main}>
-          </main>
+      <div className={styles.navBar}>
+        <a href="/">
+            <img className={styles.logo} alt="exhange" src="/graph-up.svg" decoding="async" data-nimg="fixed"></img>
+        </a>
+        {(email && token && email!="" && token!="") ? (
+          <div>
+            <button onClick={logout}>Logout</button>
+          </div>
+        ) : (
+          <div>
+            <button onClick={goSignup}>Sign Up</button>
+            <button onClick={goLogin}>Login</button>
+            </div>  
         )}
-      </>
-    );
-  
+      </div>
+
+      <DepositCard visible={depositCardVisible} email={email} token={token} close={closeCardDeposit}/>
+      <BuyCard visible={buyCardVisible} email={email} token={token} close={closeCardBuy}/>
+      <WithdrawCard visible={withdrawCardVisible} email={email} token={token} close={closeCardWithdraw}/>
+      
+      <FilterCard visible={filterCardVisible} filters={filter} close={closeCardFilter} updateFunction={updateFilter}/>
+
+      <Login visible={loginCardVisible} close={closeCardLogin} logged={loggedIn} goSignup={goSignup}/>
+      <Signup visible={signupCardVisible} close={closeCardSignup} logged={loggedIn} goLogin={goLogin}/>
+
+      {(email && token && email!="" && token!="") ? (
+        <main className={styles.main}>
+
+          <Counts update={updateCounts} email={email} token={token}/>
+
+          <div className={styles.centerX}>
+            <button onClick={openCardDeposit}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+              </svg>
+              <span className={styles.marginLeft}>Deposit</span>
+            </button>
+            <button onClick={openCardBuy}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path fillRule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/>
+              </svg>
+              <span className={styles.marginLeft}>Buy</span>
+            </button>
+            <button onClick={openCardWithdraw}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+              </svg>
+              <span className={styles.marginLeft}>Withdraw</span>
+            </button>
+          </div>
+
+          <FilterButton onClick={openCardFilter}/>
+          <BasicTable changeSort={updateSort}>
+            <TransactionTable filter={filter} sort={sort} email={email} token={token}/>
+          </BasicTable>
+        </main>
+      ): (
+        <main className={styles.main}>
+        </main>
+      )}
+    </>
+  );
 }

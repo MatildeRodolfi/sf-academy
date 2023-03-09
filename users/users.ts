@@ -1,14 +1,16 @@
-const protoLoader = require("@grpc/proto-loader")
-const grpc = require("@grpc/grpc-js")
+const protoLoader = require("@grpc/proto-loader");
+const grpc = require("@grpc/grpc-js");
 import jwt from "jsonwebtoken";
 import crypt from "crypto";
 import { join } from "path";
 import { promisify } from "util";
 import { config } from './config/config';
-
+const Pool = require('pg').Pool;
 import { usersServiceHandlers } from './proto/build/usersPackage/usersService';
 import { ProtoGrpcType } from './proto/build/users';
 
+/** dati di accesso al db */
+const pool = new Pool(config.db);
 
 /** HASHING PASSWORD - cripta la pw e restituisce hash e salt*/
 function hashingPassword(password:string) { 
@@ -20,14 +22,9 @@ function hashingPassword(password:string) {
 /** VALID PASSWORD - verifica che la pw inserita sia corretta*/
 function validPassword (password:string, hash:string, salt:string) { 
     var newhash:string = crypt.pbkdf2Sync(password, salt, 1000, 64, `sha512`).toString(`hex`);
-    return newhash == hash; 
+    return newhash === hash; 
 }; 
 
-
-
-/** dati di accesso al db */
-const Pool = require('pg').Pool
-const pool = new Pool(config.db);
 
 /** SAVE USER - salvataggio dati utente su db*/
 function saveUser(email:string, name:string, iban:string, salt:string, pw:string){
@@ -37,7 +34,6 @@ function saveUser(email:string, name:string, iban:string, salt:string, pw:string
         pool.query(query, [email, name, iban, pw, salt], (error:any, results:any) => {
             if (error) {
                 reject(error);
-                console.log(error);
             }
             else{
                 console.log('user save into db');
@@ -55,7 +51,6 @@ function getPasswordAndSaltOfUser(email:string){
         pool.query(query, [email], (error:any, results:any) => {
             if (error) {
                 reject(error);
-                console.log(error);
             }
             else{
                 console.log('get user\'s hash and salt from db');
@@ -73,7 +68,6 @@ function getCountsValue(email:string){
         pool.query(query, [email], (error:any, results:any) => {
             if (error) {
                 reject(error);
-                console.log(error);
             }
             resolve(results.rows);
         })
@@ -83,28 +77,26 @@ function getCountsValue(email:string){
 /** UPDATE COUNT - aggiornamento valore del conto */
 function updateCount(email:string, symbol:string, value:number){
     return new Promise(function(resolve, reject) { 
-        var query
+        var query:string;
         if (symbol=="EUR"){
-            query =  'UPDATE users SET '+
-            'eur = $1+(SELECT eur FROM users WHERE email = $2 FOR UPDATE) '+
-            'WHERE (email = $2) AND ((SELECT eur FROM users WHERE email = $2) >= $1*(-1.00))';
+            query = 'UPDATE users SET '+
+            'eur = eur + $1'+
+            'WHERE (email = $2) AND (eur >= $1*(-1.00))';
         }
         else{
-            query =  'UPDATE users SET '+
-            'usd = $1+(SELECT usd FROM users WHERE email = $2 FOR UPDATE) '+
-            'WHERE (email = $2) AND ((SELECT usd FROM users WHERE email = $2) >= $1*(-1.00))';
+            query = 'UPDATE users SET '+
+            'usd = usd + $1'+
+            'WHERE (email = $2) AND (usd >= $1*(-1.00))';
         }
             
         pool.query(query, [value, email], (error:any, results:any) => {
             if (error) {
-                console.log(error);
                 reject(error);
             }
-            if (results.rowCount==0) {
-                console.log("results.rowCount==0");
+            if (results.rowCount===0) {
+                console.log("results.rowCount=0");
                 reject(results);
             }
-            console.log(results);
             resolve(results);
         })
     })
@@ -113,29 +105,27 @@ function updateCount(email:string, symbol:string, value:number){
 /** UPDATE COUNTS - aggiornamento valore di conti con passaggio tra uno e l'altro*/
 function updateCounts(email:string, to:string, valueFrom:number, valueTo:number){
     return new Promise(function(resolve, reject) {
-        var query
+        var query:string;
         if (to=="USD"){
-            query =  'UPDATE users SET '+
-            'eur = ((SELECT eur FROM users WHERE email = $2 FOR UPDATE)-$1), '+
-            'usd = ((SELECT usd FROM users WHERE email = $2 FOR UPDATE)+$3) '+
-            'WHERE (email = $2) AND ((SELECT eur FROM users WHERE email = $2) >= $1)'; 
+            query = 'UPDATE users SET '+
+            'eur = eur - $1, '+
+            'usd = usd + $2 '+
+            'WHERE (email = $3) AND (eur >= $1)';
         }
         else{
-            query =  'UPDATE users SET '+
-            'usd = ((SELECT usd FROM users WHERE email = $2 FOR UPDATE)-$1), '+
-            'eur = ((SELECT eur FROM users WHERE email = $2 FOR UPDATE)+$3) '+
-            'WHERE (email = $2) AND ((SELECT usd FROM users WHERE email = $2) >= $1)';
+            query = 'UPDATE users SET '+
+            'usd = usd - $1, '+
+            'eur = eur + $2 '+
+            'WHERE (email = $3) AND (usd >= $1)';
         }
-        pool.query(query, [valueFrom, email, valueTo], (error:any, results:any) => {
+        pool.query(query, [valueFrom, valueTo, email], (error:any, results:any) => {
             if (error) {
-                console.log(error);
                 reject(error);
             }
-            if (results.rowCount==0) {
-                console.log("results.rowCount==0");
+            if (results.rowCount===0) {
+                console.log("results.rowCount=0");
                 reject(results);
             }
-            console.log(results);
             resolve(results);
         })
     })
@@ -148,7 +138,6 @@ function saveTransaction(email:string, from:string, to:string, value:number, rat
         var query = 'INSERT INTO transactions (mail, "to", "from", value, date, rate) VALUES ($1, $2, $3, $4, current_timestamp, $5)';
         pool.query(query, [email, to, from, value, rate], (error:any, results:any) => {
             if (error) {
-                console.log(error);
                 reject(error);
             }
             resolve(results);
@@ -159,7 +148,7 @@ function saveTransaction(email:string, from:string, to:string, value:number, rat
 /** FIND TRANSACTIONS - estrazione transazione dell'utente che rispettano i filtri applicati*/
 function findTransactions(email:string, from:string, to:string, valueMin:number, valueMax:number, dateMin:string, dateMax:string, rateMin:number, rateMax:number){
     return new Promise(function(resolve, reject) {
-        var query = 'SELECT * FROM transactions WHERE mail=$1'
+        var query = 'SELECT * FROM transactions WHERE mail=$1';
         var values:Array<any> = [email];
         var i=2;
         if (from){
@@ -205,7 +194,6 @@ function findTransactions(email:string, from:string, to:string, valueMin:number,
 
         pool.query(query, values, (error:any, results:any) => {
             if (error) {
-                console.log(error);
                 reject(error);
             }
             resolve(results.rows);
@@ -236,14 +224,14 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "one or more empty input",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
         var {salt, pw} = hashingPassword(call.request.password);
         
         saveUser(call.request.email, call.request.name, call.request.iban, salt, pw)
-        .then(response => {
+        .then(() => {
             var {token, maxAge}= createToken(call.request.email);
 
             return callback(null, {
@@ -252,12 +240,12 @@ const implementations:usersServiceHandlers = {
             })
         })
         .catch(error => {
-            if (error.rowCount==0){
+            if (error.rowCount===0 || error.code=='23505'){
                 console.log("signup - duplicate email");
                 return callback({
                     code: 409,
                     message: "duplicate record: user with this email already exists",
-                    status: grpc.status.INTERNAL
+                    status: grpc.status.ALREADY_EXISTS
                 });
             }
             else{
@@ -280,7 +268,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "one or more empty input",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
         
@@ -291,7 +279,7 @@ const implementations:usersServiceHandlers = {
                 return callback({
                     code: 401,
                     message: "wrong user",
-                    status: grpc.status.INTERNAL
+                    status: grpc.status.INVALID_ARGUMENT
                 });
             }
 
@@ -313,7 +301,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 401,
                 message: "wrong password",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
             
         })
@@ -334,7 +322,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "empty email",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -343,7 +331,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 401,
                 message: "empty token",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
     
@@ -356,10 +344,10 @@ const implementations:usersServiceHandlers = {
                 return callback({
                     code: 401,
                     message: "wrong token",
-                    status: grpc.status.INTERNAL
+                    status: grpc.status.INVALID_ARGUMENT
                 });
             }
-            console.log("refreshToken - internal error");
+            console.log("refreshToken - internal error with jwt verify");
             return callback({
                 code: 500,
                 message: "internal error",
@@ -374,7 +362,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "have to wait more before ask to refresh token",
-                status: grpc.status.INTERNAL
+                status: grpc.status.FAILED_PRECONDITION
             });
         }
     
@@ -393,7 +381,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "empty email",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -402,24 +390,23 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 401,
                 message: "empty token",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
     
-        var payload
+        var payload: string|jwt.JwtPayload;
         try {
             payload = jwt.verify(call.request.token, config.jwtKey);
-            console.log(payload);
         } catch (e) {
             if (e instanceof jwt.JsonWebTokenError) {
                 console.log("getCounts - wrong token");
                 return callback({
                     code: 401,
                     message: "wrong token",
-                    status: grpc.status.INTERNAL
+                    status: grpc.status.INVALID_ARGUMENT
                 });
             }
-            console.log("getCounts - internal error");
+            console.log("getCounts - internal error with jwt verify");
             return callback({
                 code: 500,
                 message: "internal error",
@@ -437,7 +424,7 @@ const implementations:usersServiceHandlers = {
                 usd: response[0].usd
             })
         })
-        .catch(error => {
+        .catch(() => {
             console.log("getCounts - internal error with db");
             return callback({
                 code: 500,
@@ -454,7 +441,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "one or more empty input",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -466,10 +453,10 @@ const implementations:usersServiceHandlers = {
                 return callback({
                     code: 401,
                     message: "wrong token",
-                    status: grpc.status.INTERNAL
+                    status: grpc.status.INVALID_ARGUMENT
                 });
             }
-            console.log("deposit - internal error");
+            console.log("deposit - internal error with jwt verify");
             return callback({
                 code: 500,
                 message: "internal error",
@@ -482,7 +469,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "symbol not correct",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -491,20 +478,20 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "value not correct",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
         updateCount(call.request.email, call.request.symbol, call.request.value)
-        .then(response => {
+        .then(() => {
             console.log('deposit - update count into db');
 
             saveTransaction(call.request.email, 'IBAN', call.request.symbol, call.request.value, 0)
-            .then(response => {
+            .then(() => {
                 console.log('deposit - save deposit transaction into db');
                 return callback();
             })
-            .catch(error => {
+            .catch(() => {
                 console.log("deposit - internal error with db");
                 return callback({
                     code: 500,
@@ -513,7 +500,7 @@ const implementations:usersServiceHandlers = {
                 });
             });
         })
-        .catch(error => {
+        .catch(() => {
             console.log("deposit - internal error with db");
             return callback({
                 code: 500,
@@ -530,7 +517,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "one or more empty input",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
         
@@ -542,10 +529,10 @@ const implementations:usersServiceHandlers = {
                 return callback({
                     code: 401,
                     message: "wrong token",
-                    status: grpc.status.INTERNAL
+                    status: grpc.status.INVALID_ARGUMENT
                 });
             }
-            console.log("withdraw - internal error");
+            console.log("withdraw - internal error with jwt verify");
             return callback({
                 code: 500,
                 message: "internal error",
@@ -558,7 +545,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "symbol not correct",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -567,20 +554,20 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "value not correct",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
         updateCount(call.request.email, call.request.symbol, (call.request.value*-1))
-        .then(response => {
+        .then(() => {
             console.log('withdraw - update count into db');
 
             saveTransaction(call.request.email, call.request.symbol, 'IBAN', call.request.value, 0)
-            .then(response => {
+            .then(() => {
                 console.log('save withdraw transaction into db');
                 return callback();
             })
-            .catch(error => {
+            .catch(() => {
                 console.log("withdraw - internal error with db");
                 return callback({
                     code: 500,
@@ -590,12 +577,12 @@ const implementations:usersServiceHandlers = {
             });
         })
         .catch(error => {
-            if (error.rowCount==0){
+            if (error.rowCount===0){
                 console.log("withdraw - not enought");
                 return callback({
                     code: 400,
                     message: "user not have enought for withdraw",
-                    status: grpc.status.INTERNAL
+                    status: grpc.status.FAILED_PRECONDITION
                 });
             }
             else{
@@ -616,7 +603,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "one or more empty input",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -625,7 +612,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "symbol not correct",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -634,7 +621,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "value not correct",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -646,10 +633,10 @@ const implementations:usersServiceHandlers = {
                 return callback({
                     code: 401,
                     message: "wrong token",
-                    status: grpc.status.INTERNAL
+                    status: grpc.status.INVALID_ARGUMENT
                 });
             }
-            console.log("buy - internal error");
+            console.log("buy - internal error with jwt verify");
             return callback({
                 code: 500,
                 message: "internal error",
@@ -666,10 +653,11 @@ const implementations:usersServiceHandlers = {
         
         const descriptor = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/exchange.proto")));
         const grpcClient = new descriptor.exchangePackege.ExchangeService(config.exchangeHost+":"+config.exchangePort, grpc.credentials.createInsecure());
-    
+        
+        //from e to sono invertiti perchè dobbiamo calcolare il quantitativo in valuta "to" dato il valore dato in valuta "from" (il cliente mette il quantitativo di quello che vuole acquistare e siamo noi a calcolare quanto costa)
         grpcClient.exchange({value: call.request.value, from: to, to: from}, (err:any, data:any) => {
             if (err){
-                console.log("exchange error:"+err)
+                console.log("exchange error: "+err)
                 data = 0
                 return callback({
                     code: 500,
@@ -677,18 +665,19 @@ const implementations:usersServiceHandlers = {
                     status: grpc.status.INTERNAL
                 });
             }
+
             var valuesFrom:number = data.value
             
             updateCounts(call.request.email, call.request.symbol, valuesFrom, call.request.value) 
-            .then(response => {
+            .then(() => {
                 console.log('buy - update counts into db');
 
                 saveTransaction(call.request.email, from, call.request.symbol, call.request.value, data.rate)
-                .then(response => {
+                .then(() => {
                     console.log('save buy transaction into db');
                     return callback();
                 })
-                .catch(error => {
+                .catch(() => {
                     console.log("buy - internal error with db");
                     return callback({
                         code: 500,
@@ -698,7 +687,7 @@ const implementations:usersServiceHandlers = {
                 });
             })
             .catch(error => {
-                if (error.rowCount==0){
+                if (error.rowCount===0){
                     console.log("buy - not enought");
                     return callback({
                         code: 400,
@@ -725,7 +714,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "one or more empty required input",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -734,7 +723,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "valueMax<valueMin",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -743,7 +732,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "dateMax<dateMin",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -752,7 +741,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "rateMin<rateMax",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -761,7 +750,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "symbol to/from not correct",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -770,7 +759,7 @@ const implementations:usersServiceHandlers = {
             return callback({
                 code: 400,
                 message: "value not correct",
-                status: grpc.status.INTERNAL
+                status: grpc.status.INVALID_ARGUMENT
             });
         }
 
@@ -782,10 +771,10 @@ const implementations:usersServiceHandlers = {
                 return callback({
                     code: 401,
                     message: "wrong token",
-                    status: grpc.status.INTERNAL
+                    status: grpc.status.INVALID_ARGUMENT
                 });
             }
-            console.log("listTransactions - internal error");
+            console.log("listTransactions - internal error with jwt verify");
             return callback({
                 code: 500,
                 message: "internal error",
@@ -800,7 +789,7 @@ const implementations:usersServiceHandlers = {
                 response: JSON.stringify(response)
             });
         })
-        .catch(error => {
+        .catch(() => {
             console.log("listTransactions - internal error with db");
             return callback({
                 code: 500,
@@ -817,7 +806,7 @@ const implementations:usersServiceHandlers = {
 const descriptorUsers = (grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/users.proto"))) as unknown) as ProtoGrpcType
 const server = new grpc.Server()
 server.bindAsync = promisify(server.bindAsync)
-server.bindAsync('0.0.0.0:'+ config.usersPort, grpc.ServerCredentials.createInsecure(), (error:Error, port: number)=>{
+server.bindAsync('0.0.0.0:'+ config.usersPort, grpc.ServerCredentials.createInsecure(), ()=>{
     server.addService(descriptorUsers.usersPackage.usersService.service, implementations);
     server.start();
     console.log("users grpc server started on port "+ config.usersPort)

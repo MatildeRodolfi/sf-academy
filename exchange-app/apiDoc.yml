@@ -291,11 +291,9 @@ definitions:
     type: "object"
     properties:
       EUR: 
-        type: "number"
-        format: "float"
+        type: "string"
       USD: 
-        type: "number"
-        format: "float"
+        type: "string"
     required:
         - EUR
         - USD
@@ -319,8 +317,7 @@ definitions:
       email: 
         type: "string"
       value:
-        type: "number"
-        format: "float"
+        type: "string"
       symbol:
         type: "string"
       token:
@@ -340,21 +337,17 @@ definitions:
       to:
         type: "string"
       valueMin:
-        type: "number"
-        format: "float"
+        type: "string"
       valueMax:
-        type: "number"
-        format: "float"
+        type: "string"
       dateMin:
         type: "string"
       dateMax:
         type: "string"
       rateMin:
-        type: "number"
-        format: "float"  
+        type: "string"  
       rateMax:
-        type: "number"
-        format: "float"
+        type: "string"
       token:
         type: "string"
     required:
@@ -368,13 +361,11 @@ definitions:
       to:
         type: "string"
       value:
-        type: "number"
-        format: "float"
+        type: "string"
       date:
         type: "string"
       rate:
-        type: "number"
-        format: "float"
+        type: "string"
     required:
         - from
         - to
