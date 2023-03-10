@@ -252,7 +252,7 @@ const implementations:usersServiceHandlers = {
                 console.log("signup - internal error with db");
                 return callback({
                     code: 500,
-                    message: "internal error with insert into db",
+                    message: "internal error",
                     status: grpc.status.INTERNAL
                 });
             }
@@ -309,7 +309,7 @@ const implementations:usersServiceHandlers = {
             console.log("login - internal error with db");
             return callback({
                 code: 500,
-                message: "internal error with db",
+                message: "internal error",
                 status: grpc.status.INTERNAL
             });
         })   
@@ -329,7 +329,7 @@ const implementations:usersServiceHandlers = {
         if (!call.request.token) {
             console.log("refreshToken - empty token");
             return callback({
-                code: 401,
+                code: 400,
                 message: "empty token",
                 status: grpc.status.INVALID_ARGUMENT
             });
@@ -388,7 +388,7 @@ const implementations:usersServiceHandlers = {
         if (!call.request.token) {
             console.log("getCounts - empty token");
             return callback({
-                code: 401,
+                code: 400,
                 message: "empty token",
                 status: grpc.status.INVALID_ARGUMENT
             });
@@ -428,7 +428,7 @@ const implementations:usersServiceHandlers = {
             console.log("getCounts - internal error with db");
             return callback({
                 code: 500,
-                message: "internal error with db",
+                message: "internal error",
                 status: grpc.status.INTERNAL
             });
         });
@@ -495,7 +495,7 @@ const implementations:usersServiceHandlers = {
                 console.log("deposit - internal error with db");
                 return callback({
                     code: 500,
-                    message: "internal error with db",
+                    message: "internal error",
                     status: grpc.status.INTERNAL
                 });
             });
@@ -504,7 +504,7 @@ const implementations:usersServiceHandlers = {
             console.log("deposit - internal error with db");
             return callback({
                 code: 500,
-                message: "internal error with db",
+                message: "internal error",
                 status: grpc.status.INTERNAL
             });
         });
@@ -571,7 +571,7 @@ const implementations:usersServiceHandlers = {
                 console.log("withdraw - internal error with db");
                 return callback({
                     code: 500,
-                    message: "internal error with db",
+                    message: "internal error",
                     status: grpc.status.INTERNAL
                 });
             });
@@ -581,7 +581,7 @@ const implementations:usersServiceHandlers = {
                 console.log("withdraw - not enought");
                 return callback({
                     code: 400,
-                    message: "user not have enought for withdraw",
+                    message: "not have enought",
                     status: grpc.status.FAILED_PRECONDITION
                 });
             }
@@ -589,7 +589,7 @@ const implementations:usersServiceHandlers = {
                 console.log("withdraw - internal error with db");
                 return callback({
                     code: 500,
-                    message: "internal error with db",
+                    message: "internal error",
                     status: grpc.status.INTERNAL
                 });
             }
@@ -661,7 +661,7 @@ const implementations:usersServiceHandlers = {
                 data = 0
                 return callback({
                     code: 500,
-                    message: "internal error with exchange",
+                    message: "internal error",
                     status: grpc.status.INTERNAL
                 });
             }
@@ -681,7 +681,7 @@ const implementations:usersServiceHandlers = {
                     console.log("buy - internal error with db");
                     return callback({
                         code: 500,
-                        message: "internal error with db",
+                        message: "internal error",
                         status: grpc.status.INTERNAL
                     });
                 });
@@ -691,7 +691,7 @@ const implementations:usersServiceHandlers = {
                     console.log("buy - not enought");
                     return callback({
                         code: 400,
-                        message: "user not have enought for buy",
+                        message: "not have enought",
                         status: grpc.status.INTERNAL
                     });
                 }
@@ -699,7 +699,7 @@ const implementations:usersServiceHandlers = {
                     console.log("buy - internal error with db");
                     return callback({
                         code: 500,
-                        message: "internal error with db",
+                        message: "internal error",
                         status: grpc.status.INTERNAL
                     });
                 }
@@ -793,7 +793,7 @@ const implementations:usersServiceHandlers = {
             console.log("listTransactions - internal error with db");
             return callback({
                 code: 500,
-                message: "internal error with db",
+                message: "internal error",
                 status: grpc.status.INTERNAL
             });
         });

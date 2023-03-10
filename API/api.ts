@@ -11,14 +11,33 @@ import { config } from './config/config'
 const descriptor = grpc.loadPackageDefinition(protoLoader.loadSync(join(__dirname, "../proto/users.proto")));
 const grpcClient = new descriptor.usersPackage.usersService(config.usersHost+":"+config.usersPort, grpc.credentials.createInsecure());
 
+function getStatus(details: string){
+  var status:number = 400;
+  switch(details){
+    case "wrong user" || "wrong password" || "wrong token":
+      status=401;
+    break;
+    case "duplicate record: user with this email already exists":
+      status=409;
+    break;
+    case "internal error":
+      status=500;
+    break;
+    default: 
+      status=400;
+    break;
+  }
+  return status;
+}
+
 const operations = {
   signup: (req:any, res:any, next:any) => {
     console.log("signup acquired")
     grpcClient.signup({email: req.body.email, password: req.body.password, name: req.body.name, iban: req.body.iban}, (err:any, data:any) => {
       if (err){
-        console.log("signup error: "+err.details) 
+        console.log("signup error: "+err.details)
         var details = err.details;
-        return res.status(400).json({
+        return res.status(getStatus(details)).json({
           details
         })
       }
@@ -38,7 +57,7 @@ const operations = {
       if (err){
         console.log("login error: "+err.details)
         var details = err.details
-        return res.status(400).json({
+        return res.status(getStatus(details)).json({
           details
         })
       }
@@ -58,7 +77,7 @@ const operations = {
       if (err){
         console.log("refreshToken error: "+err.details)
         var details = err.details
-        return res.status(400).json({
+        return res.status(getStatus(details)).json({
           details
         })
       }
@@ -78,7 +97,7 @@ const operations = {
       if (err){
         console.log("counts error: "+err.details)
         var details = err.details
-        return res.status(400).json({
+        return res.status(getStatus(details)).json({
           details
         })
       }
@@ -98,7 +117,7 @@ const operations = {
       if (err){
         console.log("deposit error: "+err.details)
         var details = err.details
-        return res.status(400).json({
+        return res.status(getStatus(details)).json({
           details
         })
       }
@@ -117,7 +136,7 @@ const operations = {
       if (err){
         console.log("withdraw error: "+err.details)
         var details = err.details
-        return res.status(400).json({
+        return res.status(getStatus(details)).json({
           details
         })
       }
@@ -136,7 +155,7 @@ const operations = {
       if (err){
         console.log("buy error: "+err.details)
         var details = err.details
-        return res.status(400).json({
+        return res.status(getStatus(details)).json({
           details
         })
       }
@@ -155,7 +174,7 @@ const operations = {
       if (err){
         console.log("listTransactions error: "+err.details)
         var details = err.details
-        return res.status(400).json({
+        return res.status(getStatus(details)).json({
           details
         })
       }
