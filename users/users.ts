@@ -35,10 +35,8 @@ function saveUser(email:string, name:string, iban:string, salt:string, pw:string
             if (error) {
                 reject(error);
             }
-            else{
-                console.log('user save into db');
-                resolve(results);
-            }
+            console.log('user save into db');
+            resolve(results);
         })
     })
 }
@@ -52,10 +50,8 @@ function getPasswordAndSaltOfUser(email:string){
             if (error) {
                 reject(error);
             }
-            else{
-                console.log('get user\'s hash and salt from db');
-                resolve(results.rows);
-            }
+            console.log('get user\'s hash and salt from db');
+            resolve(results.rows);
         })
     })
 }
@@ -74,51 +70,25 @@ function getCountsValue(email:string){
     })
 }
 
-/** UPDATE COUNT - aggiornamento valore del conto */
-function updateCount(email:string, symbol:string, value:number){
-    return new Promise(function(resolve, reject) { 
-        var query:string;
-        if (symbol=="EUR"){
-            query = 'UPDATE users SET '+
-            'eur = eur + $1'+
-            'WHERE (email = $2) AND (eur >= $1*(-1.00))';
-        }
-        else{
-            query = 'UPDATE users SET '+
-            'usd = usd + $1'+
-            'WHERE (email = $2) AND (usd >= $1*(-1.00))';
-        }
-            
-        pool.query(query, [value, email], (error:any, results:any) => {
-            if (error) {
-                reject(error);
-            }
-            if (results.rowCount===0) {
-                console.log("results.rowCount=0");
-                reject(results);
-            }
-            resolve(results);
-        })
-    })
-}
-
 /** UPDATE COUNTS - aggiornamento valore di conti con passaggio tra uno e l'altro*/
-function updateCounts(email:string, to:string, valueFrom:number, valueTo:number){
-    return new Promise(function(resolve, reject) {
-        var query:string;
-        if (to=="USD"){
-            query = 'UPDATE users SET '+
-            'eur = eur - $1, '+
-            'usd = usd + $2 '+
-            'WHERE (email = $3) AND (eur >= $1)';
-        }
-        else{
-            query = 'UPDATE users SET '+
-            'usd = usd - $1, '+
-            'eur = eur + $2 '+
-            'WHERE (email = $3) AND (usd >= $1)';
-        }
-        pool.query(query, [valueFrom, valueTo, email], (error:any, results:any) => {
+function updateCounts(email:string){
+    return new Promise(function(resolve, reject) { //TODO
+        var query:string = 'UPDATE users SET ' +
+        'eur = ( ' +
+        '    COALESCE((SELECT SUM(value) FROM transactions WHERE mail = $1 AND "to" = \'EUR\'), 0)+ ' +
+        '    COALESCE((SELECT SUM(value*-1) FROM transactions WHERE mail = $1 AND "from" = \'EUR\' AND "to"=\'IBAN\'), 0)+ ' +
+        '    COALESCE((SELECT SUM(value/rate*-1) FROM transactions WHERE mail = $1 AND "from" = \'EUR\' AND "to"!=\'IBAN\'), 0) ' +
+        '), ' +
+        'usd = ( ' +
+        '    COALESCE((SELECT SUM(value) FROM transactions WHERE mail = $1 AND "to" = \'USD\'), 0)+ ' +
+        '    COALESCE((SELECT SUM(value*-1) FROM transactions WHERE mail = $1 AND "from" = \'USD\' AND "to"=\'IBAN\'), 0)+ ' +
+        '    COALESCE((SELECT SUM(value*rate*-1) FROM transactions WHERE mail = $1 AND "from" = \'USD\' AND "to"!=\'IBAN\'), 0) ' +
+        ') ' +
+        'WHERE (users.email = $1)';
+
+        console.log("here")
+        
+        pool.query(query, [email], (error:any, results:any) => {
             if (error) {
                 reject(error);
             }
@@ -232,7 +202,7 @@ const implementations:usersServiceHandlers = {
         
         saveUser(call.request.email, call.request.name, call.request.iban, salt, pw)
         .then(() => {
-            var {token, maxAge}= createToken(call.request.email);
+            var {token, maxAge} = createToken(call.request.email);
 
             return callback(null, {
                 token: token,
@@ -286,26 +256,25 @@ const implementations:usersServiceHandlers = {
             var pw:string = response[0].password;
             var salt:string = response[0].salt;
 
-            if (validPassword(call.request.password, pw, salt)){
-
-                console.log("user authenticated");
-                var {token, maxAge}= createToken(call.request.email);
-
-                return callback(null, {
-                    token: token,
-                    maxAge: maxAge
-                })
+            if (! validPassword(call.request.password, pw, salt)){
+                console.log("login - wrong password");
+                return callback({
+                    code: 401,
+                    message: "wrong password",
+                    status: grpc.status.INVALID_ARGUMENT
+                });
             }
             
-            console.log("login - wrong password");
-            return callback({
-                code: 401,
-                message: "wrong password",
-                status: grpc.status.INVALID_ARGUMENT
-            });
+            console.log("user authenticated");
+            var {token, maxAge}= createToken(call.request.email);
+
+            return callback(null, {
+                token: token,
+                maxAge: maxAge
+            })
             
         })
-        .catch(error => {
+        .catch(() => {
             console.log("login - internal error with db");
             return callback({
                 code: 500,
@@ -482,13 +451,13 @@ const implementations:usersServiceHandlers = {
             });
         }
 
-        updateCount(call.request.email, call.request.symbol, call.request.value)
+        saveTransaction(call.request.email, 'IBAN', call.request.symbol, call.request.value, 0)
         .then(() => {
-            console.log('deposit - update count into db');
+            console.log('deposit - save transaction into db');
 
-            saveTransaction(call.request.email, 'IBAN', call.request.symbol, call.request.value, 0)
+            updateCounts(call.request.email)
             .then(() => {
-                console.log('deposit - save deposit transaction into db');
+                console.log('deposit - update counts into db');
                 return callback();
             })
             .catch(() => {
@@ -558,13 +527,13 @@ const implementations:usersServiceHandlers = {
             });
         }
 
-        updateCount(call.request.email, call.request.symbol, (call.request.value*-1))
+        saveTransaction(call.request.email, call.request.symbol, 'IBAN', call.request.value, 0)
         .then(() => {
-            console.log('withdraw - update count into db');
+            console.log('withdraw - save transaction into db');
 
-            saveTransaction(call.request.email, call.request.symbol, 'IBAN', call.request.value, 0)
+            updateCounts(call.request.email)
             .then(() => {
-                console.log('save withdraw transaction into db');
+                console.log('withdraw - update counts into db ');
                 return callback();
             })
             .catch(() => {
@@ -668,13 +637,13 @@ const implementations:usersServiceHandlers = {
 
             var valuesFrom:number = data.value
             
-            updateCounts(call.request.email, call.request.symbol, valuesFrom, call.request.value) 
+            saveTransaction(call.request.email, from, call.request.symbol, call.request.value, data.rate) 
             .then(() => {
-                console.log('buy - update counts into db');
+                console.log('buy - save transaction into db');
 
-                saveTransaction(call.request.email, from, call.request.symbol, call.request.value, data.rate)
+                updateCounts(call.request.email)
                 .then(() => {
-                    console.log('save buy transaction into db');
+                    console.log('buy - update counts into db');
                     return callback();
                 })
                 .catch(() => {

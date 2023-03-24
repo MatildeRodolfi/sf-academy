@@ -20,3 +20,5 @@
 /exchange/proto
 /exchange/config
 /exchange/.env
+
+/test

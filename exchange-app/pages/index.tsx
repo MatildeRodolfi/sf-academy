@@ -1,16 +1,12 @@
-//TODO implementare il rinnovo automatico del token e lettura di mail/token nelle variabili di sessione
+import Head from 'next/head'
+import styles from '@/styles/Home.module.css'
+import { useState, useEffect, Ref } from 'react'
+import React, { Component }  from 'react'
+import type{ListResponse} from "../openAPI/index"
+import {UserApi, TransactionApi} from "../openAPI/index"
 
-import Head from 'next/head';
-import styles from '@/styles/Home.module.css';
-import { useState, useEffect, Ref } from 'react';
-import React, { Component }  from 'react';
-import type{ListResponse} from "../openAPI/index";
-import {UserApi, TransactionApi} from "../openAPI/index";
-
-var usersApi:UserApi = new UserApi;
-var transactionApi:TransactionApi = new TransactionApi;
-
-
+let usersApi:UserApi = new UserApi
+let transactionApi:TransactionApi = new TransactionApi
 
 type sortType = {
   type:string, 
@@ -27,7 +23,40 @@ type filterType = {
   dateMax:string|undefined, 
   rateMin:number|undefined, 
   rateMax:number|undefined
-};
+}
+
+
+
+/*--------------------------------
+----------------------------------
+              SYMBOLS
+----------------------------------
+---------------------------------*/
+
+function X(){
+  return(
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+      <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
+    </svg>
+  )
+}
+
+function CaretDown(props:{class: string}){
+  return(
+    <svg className={props.class} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+    </svg>
+  )
+}
+
+function CaretUp(props:{class: string}){
+  return(
+    <svg className={props.class} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
+    </svg>
+  )
+}
+
 
 /*--------------------------------
 ----------------------------------
@@ -38,10 +67,10 @@ type filterType = {
 /** ERROR VISUALIZATION*/
 function ErrorInCard(props:{error: string}) {
   if (props.error==""){
-    return null;
+    return null
   }
   else{
-    return <span className={styles.error}>{props.error}</span>;
+    return <span className={styles.error}>{props.error}</span>
   }
 }
 
@@ -53,228 +82,207 @@ function ErrorInCard(props:{error: string}) {
 ---------------------------------*/
 
 /** LOGIN CARD */
-class Login extends React.Component<{visible:boolean, close:Function, logged:Function, goSignup:Function}, any> {
-  
-  constructor(props:{visible:boolean, close:Function, logged:Function, goSignup:Function}) {
-    super(props);
-    this.state = {
-      error: ""
-    };
-  }
+function Login (props: {visible:boolean, close:Function, logged:Function, goSignup:Function}) {
+  let [error, setError] = useState("")
 
-
-  login(e: React.SyntheticEvent){
-    e.preventDefault();
+  function login(e: React.SyntheticEvent){
+    e.preventDefault()
 
     const target = e.target as typeof e.target & {
-      email: { value: string };
-      password: { value: string };
-    };
-
-    const mail:string = target.email.value;
-    if (!mail){
-      this.setState({ error: "email reaquired"});
-      return;
+      email: { value: string }
+      password: { value: string }
     }
 
-    const password:string = target.password.value;
+    const mail:string = target.email.value
+    if (!mail){
+      setError("email reaquired")
+      return
+    }
+
+    const password:string = target.password.value
     if (!password){
-      this.setState({ error: "password required"});
-      return;
+      setError("password required")
+      return
     }
       
-    this.setState({ error: ""});
+    setError("")
 
     usersApi.login({email: mail, password: password})
     .then((res:any) => {
-      this.props.logged(mail, res.data.token, res.data.maxAge);
+      props.logged(mail, res.data.token, res.data.maxAge)
     })
     .catch((error:any)=>{
-      this.setState({ error: error.response.data.details});
+      setError(error.response.data.details)
     })
   }
 
-  closeCard(e: React.FormEvent<HTMLDivElement>){
-    this.setState({ error: ""});
-    this.props.close();
+  function closeCard(){
+    setError("")
+    props.close()
   }
 
-  signup(e: React.FormEvent<HTMLButtonElement>){
-    this.setState({ error: ""});
-    this.props.goSignup();
+  function signup(){
+    setError("")
+    props.goSignup()
   }
 
-  render() {
-    if (this.props.visible){
-      return (
-        <div className={styles.cardDiv}>
-          <p className={styles.bigCenterElement}>Login</p>
+  if (props.visible){
+    return (
+      <div className={styles.cardDiv}>
+        <p className={styles.bigCenterElement}>Login</p>
 
-          <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
-            </svg>
-          </div>
-
-          <div className={styles.formDiv} >
-            <form onSubmit={this.login.bind(this)}>
-              <div className={styles.inputDiv}>
-                <input name="email" type="email" placeholder="Your email"></input>
-              </div>
-              
-              <div className={styles.inputDiv}>
-                <input name="password" type="password" placeholder="Password"></input>
-              </div>
-
-              <ErrorInCard error={this.state.error}/>
-
-              <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Login</button>
-            </form>
-          </div>
-
-          <div className={styles.linkDiv}>
-            <button type="button" className={[styles.trasparentButton, styles.bigCenterElement].join(" ")} onClick={this.signup.bind(this)}>
-              <span>
-                Don't have an account?&nbsp;
-                <span className={styles.coloredText}>Sign up</span>
-              </span>
-            </button>
-          </div>
+        <div className={styles.closeDiv} onClick={closeCard}>
+          <X/>
         </div>
-      );
-    }
-    else{
-      return;
-    }
+
+        <div className={styles.formDiv} >
+          <form onSubmit={login}>
+            <div className={styles.inputDiv}>
+              <input name="email" type="email" placeholder="Your email"></input>
+            </div>
+            
+            <div className={styles.inputDiv}>
+              <input name="password" type="password" placeholder="Password"></input>
+            </div>
+
+            <ErrorInCard error={error}/>
+
+            <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Login</button>
+          </form>
+        </div>
+
+        <div className={styles.linkDiv}>
+          <button type="button" className={[styles.trasparentButton, styles.bigCenterElement].join(" ")} onClick={signup}>
+            <span>
+              Don't have an account?
+              <span className={styles.coloredText}>Sign up</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    )
+  }
+  else{
+    return <></>
   }
 }
 
 /** SIGNUP CARD */
-class Signup extends React.Component<{visible:boolean, close:Function, logged:Function, goLogin:Function}, any> {
-  
-  constructor(props:{visible:boolean, close:Function, logged:Function, goLogin:Function}) {
-    super(props);
-    this.state = {
-      error: ""
-    };
-  }
+function Signup (props:{visible:boolean, close:Function, logged:Function, goLogin:Function}){
+  let [error, setError] = useState("")
 
-  signup(e: React.SyntheticEvent){
-    e.preventDefault();
+  function signup(e: React.SyntheticEvent){
+    e.preventDefault()
 
     const target = e.target as typeof e.target & {
-      email: { value: string };
-      password: { value: string };
-      password2: { value: string };
-      name: { value: string };
-      iban: { value: string };
-    };
+      email: { value: string }
+      password: { value: string }
+      password2: { value: string }
+      name: { value: string }
+      iban: { value: string }
+    }
 
-    const mail:string = target.email.value;
+    const mail:string = target.email.value
     if (!mail){
-      this.setState({ error: "email reaquired"});
-      return;
+      setError("email reaquired")
+      return
     }
 
-    const password:string = target.password.value;
+    const password:string = target.password.value
     if (!password){
-      this.setState({ error: "password required"});
-      return;
+      setError("password required")
+      return
     }
 
-    const password2:string = target.password2.value;
+    const password2:string = target.password2.value
     if (password!=password2){
-      this.setState({ error: "Passwords do not match"});
-      return;
+      setError("Passwords do not match")
+      return
     }
 
-    const name:string = target.name.value;
+    const name:string = target.name.value
     if (!name){
-      this.setState({ error: "name required"});
-      return;
+      setError("name required")
+      return
     }
 
-    const iban:string = target.iban.value;
+    const iban:string = target.iban.value
     if (!iban){
-      this.setState({ error: "iban required"});
-      return;
+      setError("iban required")
+      return
     }
 
-    this.setState({ error: ""});
+    setError("")
 
     usersApi.signup({ email: mail, password: password, name: name, iban: iban})
     .then((res:any) => {
-      this.props.logged(mail, res.data.token, res.data.maxAge);
+      props.logged(mail, res.data.token, res.data.maxAge)
     })
     .catch((error:any)=>{
-      this.setState({ error: error.response.data.details});
+      setError(error.response.data.details)
     })
   }
 
-  closeCard(e: React.FormEvent<HTMLDivElement>){
-    this.setState({ error: ""});
-    this.props.close();
+  function closeCard(){
+    setError("")
+    props.close()
   }
 
-  login(e: React.FormEvent<HTMLButtonElement>){
-    this.setState({ error: ""});
-    this.props.goLogin();
+  function login(){
+    setError("")
+    props.goLogin()
   }
 
-  render() {
-    if (this.props.visible){
-      return (
-        <div className={styles.cardDiv}>
-          <p className={styles.bigCenterElement}>Login</p>
+  if (props.visible){
+    return (
+      <div className={styles.cardDiv}>
+        <p className={styles.bigCenterElement}>Login</p>
 
-          <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
-            </svg>
-          </div>
-
-          <div className={styles.formDiv} >
-            <form onSubmit={this.signup.bind(this)}>
-              <div className={styles.inputDiv}>
-                <input name="email" type="email" placeholder="Your email"></input>
-              </div>
-
-              <div className={styles.inputDiv}>
-                <input name="name" type="text" placeholder="Your name"></input>
-              </div>
-
-              <div className={styles.inputDiv}>
-                <input name="iban" type="text" placeholder="Your IBAN"></input>
-              </div>
-              
-              <div className={styles.inputDiv}>
-                <input id="password" type="password" placeholder="Password"></input>
-              </div>
-
-              <div className={styles.inputDiv}>
-                <input id="password2" type="password" placeholder="Repeat Password"></input>
-              </div>
-
-              <ErrorInCard error={this.state.error}/>
-
-              <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Login</button>
-            </form>
-          </div>
-
-          <div className={styles.linkDiv}>
-            <button type="button" className={[styles.trasparentButton, styles.bigCenterElement].join(" ")} onClick={this.login.bind(this)}>
-              <span>
-                Don't have an account?&nbsp;
-                <span className={styles.coloredText}>Sign up</span>
-              </span>
-            </button>
-          </div>
+        <div className={styles.closeDiv} onClick={closeCard}>
+          <X/>
         </div>
-      );
-    }
-    else{
-      return;
-    }
+
+        <div className={styles.formDiv} >
+          <form onSubmit={signup}>
+            <div className={styles.inputDiv}>
+              <input name="email" type="email" placeholder="Your email"></input>
+            </div>
+
+            <div className={styles.inputDiv}>
+              <input name="name" type="text" placeholder="Your name"></input>
+            </div>
+
+            <div className={styles.inputDiv}>
+              <input name="iban" type="text" placeholder="Your IBAN"></input>
+            </div>
+            
+            <div className={styles.inputDiv}>
+              <input id="password" type="password" placeholder="Password"></input>
+            </div>
+
+            <div className={styles.inputDiv}>
+              <input id="password2" type="password" placeholder="Repeat Password"></input>
+            </div>
+
+            <ErrorInCard error={error}/>
+
+            <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Login</button>
+          </form>
+        </div>
+
+        <div className={styles.linkDiv}>
+          <button type="button" className={[styles.trasparentButton, styles.bigCenterElement].join(" ")} onClick={login}>
+            <span>
+              Don't have an account? 
+              <span className={styles.coloredText}>Sign up</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    )
+  }
+  else{
+    return <></>
   }
 }
 
@@ -286,270 +294,237 @@ class Signup extends React.Component<{visible:boolean, close:Function, logged:Fu
 ---------------------------------*/
 
 /** DEPOSIT CARD - deposit on the count of choice*/
-class DepositCard extends React.Component<{visible:boolean, email:string, token:string, close:Function}, any> {
-  
-  constructor(props:{visible:boolean, email:string, token:string, close:Function}) {
-    super(props);
-    this.state = {
-      error: ""
-    };
-  }
+function DepositCard (props: {visible:boolean, email:string, token:string, close:Function}) {
+  let [error, setError] = useState("")
 
-  save(e: React.SyntheticEvent){
-    e.preventDefault();
+  function save(e: React.SyntheticEvent){
+    e.preventDefault()
 
     const target = e.target as typeof e.target & {
-      quantity: { value: number };
-      to: { value: string };
-    };
+      quantity: { value: number }
+      to: { value: string }
+    }
 
-    var value:number = target.quantity.value;
-    var to:string = target.to.value;
+    let value:number = target.quantity.value
+    let to:string = target.to.value
 
     if (!value || value<=0){
-      this.setState({ error: "quantity error"});
-      return;
+      setError("quantity error")
+      return
     }
    
-    this.setState({ error: ""});
+    setError("")
 
     transactionApi.deposit({
-      email: this.props.email,
+      email: props.email,
       value: value.toString(),
       symbol: to, 
-      token: this.props.token
+      token: props.token
     })
     .then(() => {
-      this.props.close();
+      props.close()
     })
     .catch((error:any) => {
-      this.setState({ error: error.response.data.details});
-      console.error;
+      setError(error.response.data.details)
     })
   }
 
-  closeCard(e: React.FormEvent<HTMLDivElement>){
-    this.setState({ error: ""});
-    this.props.close();
+  function closeCard(){
+    setError("")
+    props.close()
   }
 
-  render() {
-    if (this.props.visible){
-      return (
-        <div className={styles.cardDiv}>
-  
-          <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
-            </svg>
-          </div>
-  
-          <h3 className={styles.bigCenterElement}>Deposit</h3>
-          
-          <div className={styles.formDiv} >
-            <form onSubmit={this.save.bind(this)}>
-              <div className={styles.onLeftX}>
-                  <label>
-                    <span className={styles.description}>Deposit in:</span>
-                    <select name="to" defaultValue="EUR">
-                      <option value="EUR">EUR</option>
-                      <option value="USD">USD</option>
-                    </select>
-                  </label>
-              </div>
-              <div className={styles.inputDiv}>
-                <input name="quantity" type="number" step="0.01" placeholder="Quantity"></input>
-              </div>
-  
-              <ErrorInCard error={this.state.error}/>
-  
-              <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Go</button>
-            </form>
-          </div>
+  if (props.visible){
+    return (
+      <div className={styles.cardDiv}>
+
+        <div className={styles.closeDiv} onClick={closeCard}>
+          <X/>
         </div>
-      );
-    }
-    else{
-      return;
-    }
+
+        <h3 className={styles.bigCenterElement}>Deposit</h3>
+        
+        <div className={styles.formDiv} >
+          <form onSubmit={save}>
+            <div className={styles.onLeftX}>
+                <label>
+                  <span className={styles.description}>Deposit in:</span>
+                  <select name="to" defaultValue="EUR">
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </label>
+            </div>
+            <div className={styles.inputDiv}>
+              <input name="quantity" type="number" step="0.01" placeholder="Quantity"></input>
+            </div>
+
+            <ErrorInCard error={error}/>
+
+            <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Go</button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+  else{
+    return <></>
   }
 }
 
 /** BUY CARD - buy a currency of choice*/
-class BuyCard extends React.Component<{visible:boolean, email:string, token:string, close:Function}, any> {
-  
-  constructor(props:{visible:boolean, email:string, token:string, close:Function}) {
-    super(props);
-    this.state = {
-      error: ""
-    };
-  }
+function BuyCard (props:{visible:boolean, email:string, token:string, close:Function}) {
+  let [error, setError] = useState("")
 
-  save(e: React.SyntheticEvent){
-    e.preventDefault();
+  function save(e: React.SyntheticEvent){
+    e.preventDefault()
 
     const target = e.target as typeof e.target & {
-      quantity: { value: number };
-      to: { value: string };
-    };
+      quantity: { value: number }
+      to: { value: string }
+    }
   
-    var value:number = target.quantity.value;
-    var to:string  = target.to.value;
+    let value:number = target.quantity.value
+    let to:string  = target.to.value
     
     if (!value || value<=0){
-      this.setState({ error: "quantity error"});
+      setError("quantity error")
     }
     
-    this.setState({ error: ""});
+    setError("")
 
     transactionApi.buy({
-      email: this.props.email,
+      email: props.email,
       value: value.toString(),
       symbol: to, 
-      token: this.props.token
+      token: props.token
     })
     .then((r) => {
-      this.props.close();
+      props.close()
     })
     .catch((error:any) => {
-      this.setState({ error: error.response.data.details});
-      console.error;
+      setError(error.response.data.details)
     })
   }
 
-  closeCard(e: React.FormEvent<HTMLDivElement>){
-    this.setState({ error: ""});
-    this.props.close();
+  function closeCard(){
+    setError("")
+    props.close()
   }
 
-  render() {
-    if (this.props.visible){
-      return (
-        <div className={styles.cardDiv}>
-  
-          <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
-            </svg>
-          </div>
-  
-          <h3 className={styles.bigCenterElement}>Buy</h3>
-          
-          <div className={styles.formDiv} >
-            <form onSubmit={this.save.bind(this)}>
-              <div className={styles.onLeftX}>
-                  <label>
-                    <span className={styles.description}>Buy:</span>
-                    <select name="to" defaultValue="EUR">
-                      <option value="EUR">EUR</option>
-                      <option value="USD">USD</option>
-                    </select>
-                  </label>
-              </div>
-              <div className={styles.inputDiv}>
-                <input name="quantity" type="number" step="0.01" placeholder="Quantity"></input>
-              </div>
-  
-              <ErrorInCard error={this.state.error}/>
-  
-              <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Go</button>
-            </form>
-          </div>
+  if (props.visible){
+    return (
+      <div className={styles.cardDiv}>
+
+        <div className={styles.closeDiv} onClick={closeCard}>
+          <X/>
         </div>
-      );
-    }
-    else{
-      return;
-    }
+
+        <h3 className={styles.bigCenterElement}>Buy</h3>
+        
+        <div className={styles.formDiv} >
+          <form onSubmit={save}>
+            <div className={styles.onLeftX}>
+                <label>
+                  <span className={styles.description}>Buy:</span>
+                  <select name="to" defaultValue="EUR">
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </label>
+            </div>
+            <div className={styles.inputDiv}>
+              <input name="quantity" type="number" step="0.01" placeholder="Quantity"></input>
+            </div>
+
+            <ErrorInCard error={error}/>
+
+            <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Go</button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+  else{
+    return <></>
   }
 }
 
 /** WITHDRAW CARD - Withdraw from the count of choice*/
-class WithdrawCard extends React.Component<{visible:boolean, email:string, token:string, close:Function}, any> {
-  
-  constructor(props:{visible:boolean, email:string, token:string, close:Function}) {
-    super(props);
-    this.state = {
-      error: ""
-    };
-  }
+function WithdrawCard (props:{visible:boolean, email:string, token:string, close:Function}) {
+  let [error, setError] = useState("")
 
-  save(e: React.SyntheticEvent){
-    e.preventDefault();
+  function save(e: React.SyntheticEvent){
+    e.preventDefault()
 
     const target = e.target as typeof e.target & {
-      quantity: { value: number };
-      to: { value: string };
-    };
+      quantity: { value: number }
+      to: { value: string }
+    }
 
-    var value:number = target.quantity.value;
-    var to:string = target.to.value;
+    let value:number = target.quantity.value
+    let to:string = target.to.value
     
     if (!value || value<=0){
-      this.setState({ error: "quantity error"});
+      setError("quantity error")
     }
 
-    this.setState({ error: ""});
+    setError("")
 
     transactionApi.withdraw({
-      email: this.props.email,
+      email: props.email,
       value: value.toString(),
       symbol: to, 
-      token: this.props.token
+      token: props.token
     })
     .then(() => {
-      this.props.close();
+      props.close()
     })
     .catch((error:any) => {
-      this.setState({ error: error.response.data.details});
-      console.error;
+      setError(error.response.data.details)
     })
   }
 
-  closeCard(e: React.FormEvent<HTMLDivElement>){
-    this.setState({ error: ""});
-    this.props.close();
+  function closeCard(){
+    setError("")
+    props.close()
   }
 
-  render() {
-    if (this.props.visible){
-      return (
-        <div className={styles.cardDiv}>
-  
-          <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
-            </svg>
-          </div>
-  
-          <h3 className={styles.bigCenterElement}>Withdraw</h3>
-          
-          <div className={styles.formDiv} >
-            <form onSubmit={this.save.bind(this)}>
-              <div className={styles.onLeftX}>
-                  <label>
-                    <span className={styles.description}>Withdraw from:</span>
-                    <select name="to" defaultValue="EUR">
-                      <option value="EUR">EUR</option>
-                      <option value="USD">USD</option>
-                    </select>
-                  </label>
-              </div>
-              <div className={styles.inputDiv}>
-                <input name="quantity" type="number" step="0.01" placeholder="Quantity"></input>
-              </div>
-  
-              <ErrorInCard error={this.state.error}/>
-  
-              <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Go</button>
-            </form>
-          </div>
+  if (props.visible){
+    return (
+      <div className={styles.cardDiv}>
+
+        <div className={styles.closeDiv} onClick={closeCard}>
+          <X/>
         </div>
-      );
-    }
-    else{
-      return;
-    }
+
+        <h3 className={styles.bigCenterElement}>Withdraw</h3>
+        
+        <div className={styles.formDiv} >
+          <form onSubmit={save}>
+            <div className={styles.onLeftX}>
+                <label>
+                  <span className={styles.description}>Withdraw from:</span>
+                  <select name="to" defaultValue="EUR">
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </label>
+            </div>
+            <div className={styles.inputDiv}>
+              <input name="quantity" type="number" step="0.01" placeholder="Quantity"></input>
+            </div>
+
+            <ErrorInCard error={error}/>
+
+            <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Go</button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+  else{
+    return <></>
   }
 }
 
@@ -572,17 +547,11 @@ function FilterButton (props:{onClick:React.MouseEventHandler<HTMLButtonElement>
 }
 
 /** FILTER CARD */
-class FilterCard extends React.Component<{visible:boolean, filters:filterType, close:Function, updateFunction:(filters:filterType)=>void}, any> {
-  
-  constructor(props:{visible:boolean, filters:filterType, close:Function, updateFunction:(filters:filterType)=>void}) {
-    super(props);
-    this.state = {
-      error: "",
-    };
-  }
+function FilterCard (props:{visible:boolean, filters:filterType, close:Function, updateFunction:(filters:filterType)=>void}) {
+  let [error, setError] = useState("")
 
-  update(e: React.SyntheticEvent){
-    e.preventDefault();
+  function update(e: React.SyntheticEvent){
+    e.preventDefault()
 
     const target = e.target as typeof e.target & {
       from: { value: string }, 
@@ -593,167 +562,163 @@ class FilterCard extends React.Component<{visible:boolean, filters:filterType, c
       dateMax: { value: string }, 
       rateMin: { value: number }, 
       rateMax: { value: number }
-    };
+    }
 
-    var filters: filterType = {from:undefined, to:undefined, valueMax:undefined, valueMin:undefined, dateMax:undefined, dateMin:undefined, rateMax:undefined, rateMin:undefined};
+    let filters: filterType = {from:undefined, to:undefined, valueMax:undefined, valueMin:undefined, dateMax:undefined, dateMin:undefined, rateMax:undefined, rateMin:undefined}
 
-    filters.from = target.from.value;
+    filters.from = target.from.value
     if (filters.from==="all"){
       filters.from=undefined
     }
 
-    filters.to = target.to.value;
+    filters.to = target.to.value
     if (filters.to==="all"){
       filters.to=undefined
     }
 
-    filters.valueMin = target.valueMin.value;
+    filters.valueMin = target.valueMin.value
     if (!filters.valueMin || filters.valueMin==0){
       filters.valueMin=undefined
     }
     if (filters.valueMin && filters.valueMin<0){
-      this.setState({ error: "valueMin < 0"});
-      return;
+      setError("valueMin < 0")
+      return
     }
     
-    filters.valueMax = target.valueMax.value;
+    filters.valueMax = target.valueMax.value
     if (!filters.valueMax || filters.valueMax==0){
       filters.valueMax=undefined
     }
     if (filters.valueMax && filters.valueMax<0){
-      this.setState({ error: "valueMax < 0"});
-      return;
+      setError("valueMax < 0")
+      return
     }
 
     if (filters.valueMin && filters.valueMax && filters.valueMax<filters.valueMin){
-      this.setState({ error: "valueMax < valueMin"});
-      return;
+      setError("valueMax < valueMin")
+      return
     }
 
-    filters.rateMin = target.rateMin.value;
+    filters.rateMin = target.rateMin.value
     if (!filters.rateMin || filters.rateMin==0){
       filters.rateMin=undefined
     }
     if (filters.rateMin && filters.rateMin<0){
-      this.setState({ error: "rateMin < 0"});
-      return;
+      setError("rateMin < 0")
+      return
     }
     
-    filters.rateMax = target.rateMax.value;
+    filters.rateMax = target.rateMax.value
     if (!filters.rateMax || filters.rateMax==0){
       filters.rateMax=undefined
     }
     if (filters.rateMax && filters.rateMax<0){
-      this.setState({ error: "rateMax < 0"});
-      return;
+      setError("rateMax < 0")
+      return
     }
 
     if (filters.rateMin && filters.rateMax && filters.rateMax<filters.rateMin){
-      this.setState({ error: "rateMax < rateMin"});
-      return;
+      setError("rateMax < rateMin")
+      return
     }
 
-    filters.dateMin = target.dateMin.value;
+    filters.dateMin = target.dateMin.value
     if (!filters.dateMin || filters.dateMin==""){
       filters.dateMin=undefined
     }
     
-    filters.dateMax = target.dateMax.value;
+    filters.dateMax = target.dateMax.value
     if (!filters.dateMax || filters.dateMax==""){
       filters.dateMax=undefined
     }
 
     if (filters.dateMin && filters.dateMax && filters.dateMax<filters.dateMin){
-      this.setState({ error: "dateMax < dateMin"});
-      return;
+      setError("dateMax < dateMin")
+      return
     }
 
-    this.setState({ error: ""});
-    this.props.updateFunction(filters);
-    this.props.close();
+    setError("")
+    props.updateFunction(filters)
+    props.close()
   }
 
-  closeCard(e: React.FormEvent<HTMLDivElement>){
-    this.setState({ error: ""});
-    this.props.close();
+  function closeCard(e: React.FormEvent<HTMLDivElement>){
+    setError("")
+    props.close()
   }
 
-  render() {
-    if (this.props.visible){
-      return (
-        <div className={styles.cardDiv}>
-          <div className={styles.closeDiv} onClick={this.closeCard.bind(this)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
-            </svg>
-          </div>
-
-          <h3 className={styles.bigCenterElement}>Filter</h3>
-          
-          <div className={styles.formDiv} >
-            <form onSubmit={this.update.bind(this)}>
-              <div className={styles.centerX}>
-                <div className={styles.bigCenterElement}>
-                    <legend>From: </legend>
-                    <select name="from" defaultValue={(!this.props.filters.from) ? "all" : this.props.filters.from}>
-                      <option value="EUR">EUR </option>
-                      <option value="USD">USD</option>
-                      <option value="IBAN">IBAN</option>
-                      <option value="all">all</option>
-                    </select>
-                </div>
-                <div className={styles.bigCenterElement}>
-                    <legend>To: </legend>
-                    <select name="to" defaultValue={(!this.props.filters.to) ? "all" : this.props.filters.to}>
-                      <option value="EUR">EUR </option>
-                      <option value="USD">USD</option>
-                      <option value="IBAN">IBAN</option>
-                      <option value="all">all</option>
-                    </select>
-                </div>
-              </div>
-
-              <div className={styles.centerX}>
-                <div className={styles.inputDiv}>
-                  <input name="valueMin" type="number" step="0.01" placeholder="Value Min" defaultValue={this.props.filters.valueMin} ></input>
-                </div>
-
-                <div className={styles.inputDiv}>
-                  <input name="valueMax" type="number" step="0.01" placeholder="Value Max" defaultValue={this.props.filters.valueMax}></input>
-                </div>
-              </div>
-                
-              <div className={styles.centerX}>
-                <div className={styles.inputDiv}>
-                  <input name="rateMin" type="number" step="0.01" placeholder="Rate Min" defaultValue={this.props.filters.rateMin}></input>
-                </div>
-
-                <div className={styles.inputDiv}>
-                  <input name="rateMax" type="number" step="0.01" placeholder="Rate Max" defaultValue={this.props.filters.rateMax}></input>
-                </div>
-              </div>
-
-              <div className={styles.centerX}>
-                <div className={styles.inputDiv}>
-                  <input name="dateMin" type="date" placeholder="Date Min" defaultValue={this.props.filters.dateMin}></input>
-                </div>
-
-                <div className={styles.inputDiv}>
-                  <input name="dateMax" type="date" placeholder="Date Max" defaultValue={this.props.filters.dateMax}></input>
-                </div>
-              </div>
-
-              <ErrorInCard error={this.state.error}/>
-
-              <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Update</button>
-            </form>
-          </div>
+  if (props.visible){
+    return (
+      <div className={styles.cardDiv}>
+        <div className={styles.closeDiv} onClick={closeCard}>
+          <X/>
         </div>
-      );
-    }
-    else{
-      return;
-    }
+
+        <h3 className={styles.bigCenterElement}>Filter</h3>
+        
+        <div className={styles.formDiv} >
+          <form onSubmit={update}>
+            <div className={styles.centerX}>
+              <div className={styles.bigCenterElement}>
+                  <legend>From: </legend>
+                  <select name="from" defaultValue={(!props.filters.from) ? "all" : props.filters.from}>
+                    <option value="EUR">EUR </option>
+                    <option value="USD">USD</option>
+                    <option value="IBAN">IBAN</option>
+                    <option value="all">all</option>
+                  </select>
+              </div>
+              <div className={styles.bigCenterElement}>
+                  <legend>To: </legend>
+                  <select name="to" defaultValue={(!props.filters.to) ? "all" : props.filters.to}>
+                    <option value="EUR">EUR </option>
+                    <option value="USD">USD</option>
+                    <option value="IBAN">IBAN</option>
+                    <option value="all">all</option>
+                  </select>
+              </div>
+            </div>
+
+            <div className={styles.centerX}>
+              <div className={styles.inputDiv}>
+                <input name="valueMin" type="number" step="0.01" placeholder="Value Min" defaultValue={props.filters.valueMin} ></input>
+              </div>
+
+              <div className={styles.inputDiv}>
+                <input name="valueMax" type="number" step="0.01" placeholder="Value Max" defaultValue={props.filters.valueMax}></input>
+              </div>
+            </div>
+              
+            <div className={styles.centerX}>
+              <div className={styles.inputDiv}>
+                <input name="rateMin" type="number" step="0.01" placeholder="Rate Min" defaultValue={props.filters.rateMin}></input>
+              </div>
+
+              <div className={styles.inputDiv}>
+                <input name="rateMax" type="number" step="0.01" placeholder="Rate Max" defaultValue={props.filters.rateMax}></input>
+              </div>
+            </div>
+
+            <div className={styles.centerX}>
+              <div className={styles.inputDiv}>
+                <input name="dateMin" type="date" placeholder="Date Min" defaultValue={props.filters.dateMin}></input>
+              </div>
+
+              <div className={styles.inputDiv}>
+                <input name="dateMax" type="date" placeholder="Date Max" defaultValue={props.filters.dateMax}></input>
+              </div>
+            </div>
+
+            <ErrorInCard error={error}/>
+
+            <button type="submit" className={[styles.formButton, styles.bigCenterElement].join(" ")}>Update</button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+  else{
+    return <></>
   }
 }
 
@@ -765,331 +730,213 @@ class FilterCard extends React.Component<{visible:boolean, filters:filterType, c
 ---------------------------------*/
 
 /** BASIC TABLE - empty table for transactions */
-class BasicTable extends React.Component<{children:JSX.Element, changeSort:(sort:sortType)=>void}, any> {
-  fromAscending:boolean = true;
-  toAscending:boolean = true;
-  valueAscending:boolean = true;
-  rateAscending:boolean = true;
-  dateAscending:boolean = true;
-  
-  constructor(props:{children:JSX.Element, changeSort:(sort:sortType)=>void}) {
-    super(props);
-    this.state = {
-      fromA:false,
-      fromD:false,
-      toA:false,
-      toD:false,
-      valueA:false,
-      valueD:false,
-      rateA:false,
-      rateD:false,
-      dateA:false,
-      dateD:false
-    };
-  }
+function BasicTable (props: {children:JSX.Element, changeSort:(sort:sortType)=>void}) {
+  let [fromA, setFromA] = useState(false)
+  let [fromD, setFromD] = useState(false)
+  let [toA, setToA] = useState(false)
+  let [toD, setToD] = useState(false)
+  let [valueA, setValueA] = useState(false)
+  let [valueD, setValueD] = useState(false)
+  let [rateA, setRateA] = useState(false)
+  let [rateD, setRateD] = useState(false)
+  let [dateA, setDateA] = useState(false)
+  let [dateD, setDateD] = useState(false)
 
-  sortByFrom(){
-    if (!this.state.fromA){
-      this.setState({
-        fromA:true,
-        fromD:false,
-        toA:false,
-        toD:false,
-        valueA:false,
-        valueD:false,
-        rateA:false,
-        rateD:false,
-        dateA:false,
-        dateD:false
-      })
+  function sortByFrom(){
+    if (!fromA){
+      setFromA(true)
+      setFromD(false)
+      setToA(false)
+      setToD(false)
+      setValueA(false)
+      setValueD(false)
+      setRateA(false)
+      setRateD(false)
+      setDateA(false)
+      setDateD(false)
     }
     else{
-      this.setState({
-        fromA:false,
-        fromD:true,
-        toA:false,
-        toD:false,
-        valueA:false,
-        valueD:false,
-        rateA:false,
-        rateD:false,
-        dateA:false,
-        dateD:false
-      })
+      setFromA(false)
+      setFromD(true)
+      setToA(false)
+      setToD(false)
+      setValueA(false)
+      setValueD(false)
+      setRateA(false)
+      setRateD(false)
+      setDateA(false)
+      setDateD(false)
     }
-    this.props.changeSort({type:"from", ascending:this.state.fromA});
+    props.changeSort({type: "from", ascending: fromA})
   }
 
-  sortByTo(){
-    if (!this.state.toA){
-      this.setState({
-        fromA:false,
-        fromD:false,
-        toA:true,
-        toD:false,
-        valueA:false,
-        valueD:false,
-        rateA:false,
-        rateD:false,
-        dateA:false,
-        dateD:false
-      })
+  function sortByTo(){
+    if (!toA){
+      setFromA(false)
+      setFromD(false)
+      setToA(true)
+      setToD(false)
+      setValueA(false)
+      setValueD(false)
+      setRateA(false)
+      setRateD(false)
+      setDateA(false)
+      setDateD(false)
     }
     else{
-      this.setState({
-        fromA:false,
-        fromD:false,
-        toA:false,
-        toD:true,
-        valueA:false,
-        valueD:false,
-        rateA:false,
-        rateD:false,
-        dateA:false,
-        dateD:false
-      })
+      setFromA(false)
+      setFromD(false)
+      setToA(false)
+      setToD(true)
+      setValueA(false)
+      setValueD(false)
+      setRateA(false)
+      setRateD(false)
+      setDateA(false)
+      setDateD(false)
     }
-    this.props.changeSort({type:"to", ascending:this.state.toA});
+    props.changeSort({type: "to", ascending: toA})
   }
 
-  sortByValue(){
-    if (!this.state.valueA){
-      this.setState({
-        fromA:false,
-        fromD:false,
-        toA:false,
-        toD:false,
-        valueA:true,
-        valueD:false,
-        rateA:false,
-        rateD:false,
-        dateA:false,
-        dateD:false
-      })
+  function sortByValue(){
+    if (!valueA){
+      setFromA(false)
+      setFromD(false)
+      setToA(false)
+      setToD(false)
+      setValueA(true)
+      setValueD(false)
+      setRateA(false)
+      setRateD(false)
+      setDateA(false)
+      setDateD(false)
     }
     else{
-      this.setState({
-        fromA:false,
-        fromD:false,
-        toA:false,
-        toD:false,
-        valueA:false,
-        valueD:true,
-        rateA:false,
-        rateD:false,
-        dateA:false,
-        dateD:false
-      })
+      setFromA(false)
+      setFromD(false)
+      setToA(false)
+      setToD(false)
+      setValueA(false)
+      setValueD(true)
+      setRateA(false)
+      setRateD(false)
+      setDateA(false)
+      setDateD(false)
     }
-    this.props.changeSort({type:"value", ascending:this.state.valueA});
+    props.changeSort({type: "value", ascending: valueA})
   }
 
-  sortByRate(){
-    if (!this.state.rateA){
-      this.setState({
-        fromA:false,
-        fromD:false,
-        toA:false,
-        toD:false,
-        valueA:false,
-        valueD:false,
-        rateA:true,
-        rateD:false,
-        dateA:false,
-        dateD:false
-      })
+  function sortByRate(){
+    if (!rateA){
+      setFromA(false)
+      setFromD(false)
+      setToA(false)
+      setToD(false)
+      setValueA(false)
+      setValueD(false)
+      setRateA(true)
+      setRateD(false)
+      setDateA(false)
+      setDateD(false)
     }
     else{
-      this.setState({
-        fromA:false,
-        fromD:false,
-        toA:false,
-        toD:false,
-        valueA:false,
-        valueD:false,
-        rateA:false,
-        rateD:true,
-        dateA:false,
-        dateD:false
-      })
+      setFromA(false)
+      setFromD(false)
+      setToA(false)
+      setToD(false)
+      setValueA(false)
+      setValueD(false)
+      setRateA(false)
+      setRateD(true)
+      setDateA(false)
+      setDateD(false)
     }
-    this.props.changeSort({type:"rate", ascending:this.state.rateA});
+    props.changeSort({type: "rate", ascending: rateA})
   }
 
-  sortByDate(){
-    if (!this.state.dateA){
-      this.setState({
-        fromA:false,
-        fromD:false,
-        toA:false,
-        toD:false,
-        valueA:false,
-        valueD:false,
-        rateA:false,
-        rateD:false,
-        dateA:true,
-        dateD:false
-      })
+  function sortByDate(){
+    if (!dateA){
+      setFromA(false)
+      setFromD(false)
+      setToA(false)
+      setToD(false)
+      setValueA(false)
+      setValueD(false)
+      setRateA(false)
+      setRateD(false)
+      setDateA(true)
+      setDateD(false)
     }
     else{
-      this.setState({
-        fromA:false,
-        fromD:false,
-        toA:false,
-        toD:false,
-        valueA:false,
-        valueD:false,
-        rateA:false,
-        rateD:false,
-        dateA:false,
-        dateD:true
-      })
+      setFromA(false)
+      setFromD(false)
+      setToA(false)
+      setToD(false)
+      setValueA(false)
+      setValueD(false)
+      setRateA(false)
+      setRateD(false)
+      setDateA(false)
+      setDateD(true)
     }
-    this.props.changeSort({type:"date", ascending:this.state.dateA});
+    props.changeSort({type: "date", ascending: dateA})
   }
 
-  render() {
-    return (
-      <table className={styles.transactionTable}>
-        <tbody>
-          <tr>
-            <th>
-              <button className={[styles.trasparentButton, styles.tableTitle].join(" ")} onClick={this.sortByFrom.bind(this)}>
-                <span>From</span>
-                <div>
-                  {this.state.fromA ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-                    </svg>
-                  ) : (
-                    <svg className={styles.hidden} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-                    </svg>
-                  )}
-                  {this.state.fromD ? (
-                    <svg className={[styles.overlap].join(" ")} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-                    </svg>
-                  ) : (
-                    <svg className={[styles.hidden, styles.overlap].join(" ")} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-                    </svg>
-                  )}
-                </div>
-              </button>
-            </th>
-            <th>
-              <button className={[styles.trasparentButton, styles.tableTitle].join(" ")} onClick={this.sortByTo.bind(this)}>
-                <span>To</span>
-                <div>
-                  {this.state.toA ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-                    </svg>
-                  ) : (
-                    <svg className={styles.hidden} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-                    </svg>
-                  )}
-                  {this.state.toD ? (
-                    <svg className={[styles.overlap].join(" ")} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-                    </svg>
-                  ) : (
-                    <svg className={[styles.hidden, styles.overlap].join(" ")} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-                    </svg>
-                  )}
-                </div>
-              </button>
-            </th>
-            <th>
-              <button className={[styles.trasparentButton, styles.tableTitle].join(" ")} onClick={this.sortByValue.bind(this)}>
-                <span>Bought Value</span>
-                <div>
-                  {this.state.valueA ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-                    </svg>
-                  ) : (
-                    <svg className={styles.hidden} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-                    </svg>
-                  )}
-                  {this.state.valueD ? (
-                    <svg className={[styles.overlap].join(" ")} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-                    </svg>
-                  ) : (
-                    <svg className={[styles.hidden, styles.overlap].join(" ")} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-                    </svg>
-                  )}
-                </div>
-              </button>
-            </th>
-            <th>
-              <button className={[styles.trasparentButton, styles.tableTitle].join(" ")} onClick={this.sortByRate.bind(this)}>
-                <span>Rate</span>
-                <div>
-                  {this.state.rateA ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-                    </svg>
-                  ) : (
-                    <svg className={styles.hidden} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-                    </svg>
-                  )}
-                  {this.state.rateD ? (
-                    <svg className={[styles.overlap].join(" ")} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-                    </svg>
-                  ) : (
-                    <svg className={[styles.hidden, styles.overlap].join(" ")} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-                    </svg>
-                  )}
-                </div>
-              </button>
-            </th>
-            <th>
-              <button className={[styles.trasparentButton, styles.tableTitle].join(" ")} onClick={this.sortByDate.bind(this)}>
-                <span>Date</span>
-                <div>
-                  {this.state.dateA ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-                    </svg>
-                  ) : (
-                    <svg className={styles.hidden} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-                    </svg>
-                  )}
-                  {this.state.dateD ? (
-                    <svg className={[styles.overlap].join(" ")} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-                    </svg>
-                  ) : (
-                    <svg className={[styles.hidden, styles.overlap].join(" ")} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-                    </svg>
-                  )}
-                </div>
-              </button>
-            </th>
-          </tr>
-          {this.props.children}
-        </tbody> 
-      </table>
-    )
-  }
+  return (
+    <table className={styles.transactionTable}>
+      <tbody>
+        <tr>
+          <th>
+            <button className={[styles.trasparentButton, styles.tableTitle].join(" ")} onClick={sortByFrom}>
+              <span>From</span>
+              <div>
+                {fromA ? <CaretDown class=""/> : fromD ? <CaretUp class=""/> : <CaretUp class={styles.hidden}/>}
+              </div>
+            </button>
+          </th>
+          <th>
+            <button className={[styles.trasparentButton, styles.tableTitle].join(" ")} onClick={sortByTo}>
+              <span>To</span>
+              <div>
+                {toA ? <CaretDown class=""/> : toD ? <CaretUp class=""/> : <CaretUp class={styles.hidden}/>}
+              </div>
+            </button>
+          </th>
+          <th>
+            <button className={[styles.trasparentButton, styles.tableTitle].join(" ")} onClick={sortByValue}>
+              <span>Bought Value</span>
+              <div>
+                {valueA ? <CaretDown class=""/> : valueD ? <CaretUp class=""/> : <CaretUp class={styles.hidden}/>}
+              </div>
+            </button>
+          </th>
+          <th>
+            <button className={[styles.trasparentButton, styles.tableTitle].join(" ")} onClick={sortByRate}>
+              <span>Rate</span>
+              <div>
+                {rateA ? <CaretDown class=""/> : rateD ? <CaretUp class=""/> : <CaretUp class={styles.hidden}/>}
+              </div>
+            </button>
+          </th>
+          <th>
+            <button className={[styles.trasparentButton, styles.tableTitle].join(" ")} onClick={sortByDate}>
+              <span>Date</span>
+              <div>
+                {dateA ? <CaretDown class=""/> : dateD ? <CaretUp class=""/> : <CaretUp class={styles.hidden}/>}
+              </div>
+            </button>
+          </th>
+        </tr>
+        {props.children}
+      </tbody> 
+    </table>
+  )
 }
 
 /** TRANSACTION TABLE - dynamic table for transactions */
 function TransactionTable(props:{filter:filterType, sort:sortType, email:string, token: string}){
   
-  const [lista, setLista] = useState<any>();
+  const [lista, setLista] = useState<any>()
 
   useEffect(() => {
     transactionApi.listTransactions({
@@ -1106,53 +953,53 @@ function TransactionTable(props:{filter:filterType, sort:sortType, email:string,
     })
     .then((res:any) => {
       if (res.data){
-        var transactions = JSON.parse(res.data.transactions.toString());
+        let transactions = JSON.parse(res.data.transactions.toString())
         switch(props.sort.type) {
           case 'from':
             if (!props.sort.ascending) {
-              transactions.sort(function(a:ListResponse,b:ListResponse){return a.from > b.from? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.from > b.from? -1:1})
             }
             else{
-              transactions.sort(function(a:ListResponse,b:ListResponse){return a.from < b.from? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.from < b.from? -1:1})
             }
-            break;
+            break
           case 'to':
             if (!props.sort.ascending) {
-              transactions.sort(function(a:ListResponse,b:ListResponse){return a.to > b.to? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.to > b.to? -1:1})
             }
             else{
-              transactions.sort(function(a:ListResponse,b:ListResponse){return a.to < b.to? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.to < b.to? -1:1})
             }
-            break;
+            break
           case 'value':
             if (!props.sort.ascending) {
-              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.value > +b.value? -1:1;}
-                );
+              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.value > +b.value? -1:1}
+                )
             }
             else{
-              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.value < +b.value? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.value < +b.value? -1:1})
             }
-            break;
+            break
           case 'rate':
             if (!props.sort.ascending) {
-              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.rate > +b.rate? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.rate > +b.rate? -1:1})
             }
             else{
-              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.rate < +b.rate? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return +a.rate < +b.rate? -1:1})
             }
-            break;
+            break
           default:
             if (!props.sort.ascending) {
-              transactions.sort(function(a:ListResponse,b:ListResponse){return a.date > b.date? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.date > b.date? -1:1})
             }
             else{
-              transactions.sort(function(a:ListResponse,b:ListResponse){return a.date < b.date? -1:1;});
+              transactions.sort(function(a:ListResponse,b:ListResponse){return a.date < b.date? -1:1})
             }
-            break;
+            break
         }
         
         setLista(
-            transactions.map((data:ListResponse, index:number) =>
+          transactions.map((data:ListResponse, index:number) =>
             <tr key={index}> 
               <td>{data.from}</td>
               <td>{data.to}</td>
@@ -1165,7 +1012,7 @@ function TransactionTable(props:{filter:filterType, sort:sortType, email:string,
       }
     })
     .catch(console.error)
-  }, [props]);
+  }, [props])
   
   return(
     lista
@@ -1180,8 +1027,8 @@ function TransactionTable(props:{filter:filterType, sort:sortType, email:string,
 ---------------------------------*/
 /** COUNTS - visualization of counts */
 function Counts(props:{update:boolean, email:string, token:string}){
-  const [eur, setEur] = useState<number>(0);
-  const [usd, setUsd] = useState<number>(0);
+  const [eur, setEur] = useState<number>(0)
+  const [usd, setUsd] = useState<number>(0)
 
   useEffect(() => {
     usersApi.getCounts({
@@ -1189,13 +1036,13 @@ function Counts(props:{update:boolean, email:string, token:string}){
       token: props.token
     })
     .then((res:any) => {
-      var eurValue: number = +res.data.eur.toFixed(2);
-      setEur(eurValue);
-      var usdValue: number = +res.data.usd.toFixed(2);
-      setUsd(usdValue);
+      let eurValue: number = +res.data.eur.toFixed(2)
+      setEur(eurValue)
+      let usdValue: number = +res.data.usd.toFixed(2)
+      setUsd(usdValue)
     })
     .catch(console.error)
-  }, [props.update]);
+  }, [props.update])
   
   return(
     <div className={[styles.centerX, styles.countsDiv].join(" ")}>
@@ -1230,8 +1077,8 @@ function Counts(props:{update:boolean, email:string, token:string}){
 /** HOME - basic app */
 export default function Home() {
   
-  const [email, setEmail] = useState<string>("");
-  const [token, setToken] = useState<string>("");
+  const [email, setEmail] = useState<string>("")
+  const [token, setToken] = useState<string>("")
 
   const [filter, setFilter] = useState<filterType>({
     from:undefined, 
@@ -1242,91 +1089,91 @@ export default function Home() {
     dateMax:undefined, 
     rateMin:undefined, 
     rateMax:undefined
-  });
+  })
   const [sort, setSort] = useState<sortType>({
     type:"date",
     ascending: true
-  });
+  })
 
-  const [loginCardVisible, setLoginCardVisible] = useState<boolean>(false);
-  const [signupCardVisible, setSignupCardVisible] = useState<boolean>(false);
+  const [loginCardVisible, setLoginCardVisible] = useState<boolean>(false)
+  const [signupCardVisible, setSignupCardVisible] = useState<boolean>(false)
 
-  const [filterCardVisible, setFilterCardVisible] = useState<boolean>(false);
-  const [depositCardVisible, setDepositCardVisible] = useState<boolean>(false);
-  const [buyCardVisible, setBuyCardVisible] = useState<boolean>(false);
-  const [withdrawCardVisible, setWithdrawCardVisible] = useState<boolean>(false);
-  const [updateCounts, setUpdateCounts] = useState<boolean>(false);
+  const [filterCardVisible, setFilterCardVisible] = useState<boolean>(false)
+  const [depositCardVisible, setDepositCardVisible] = useState<boolean>(false)
+  const [buyCardVisible, setBuyCardVisible] = useState<boolean>(false)
+  const [withdrawCardVisible, setWithdrawCardVisible] = useState<boolean>(false)
+  const [updateCounts, setUpdateCounts] = useState<boolean>(false)
 
   function updateFilter(filters:filterType){
-    setFilter(filters);
-    setUpdateCounts(!updateCounts);
+    setFilter(filters)
+    setUpdateCounts(!updateCounts)
   }
 
   function updateSort(sort:sortType){
-    setSort(sort);
-    setUpdateCounts(!updateCounts);
+    setSort(sort)
+    setUpdateCounts(!updateCounts)
   }
 
   function openCardLogin(){
-    setLoginCardVisible(true); 
+    setLoginCardVisible(true) 
   }
 
   function openCardSignup(){
-    setSignupCardVisible(true); 
+    setSignupCardVisible(true) 
   }
 
   function openCardDeposit(){
-    setDepositCardVisible(true); 
+    setDepositCardVisible(true) 
   }
 
   function openCardBuy(){
-    setBuyCardVisible(true); 
+    setBuyCardVisible(true) 
   }
 
   function openCardWithdraw(){
-    setWithdrawCardVisible(true); 
+    setWithdrawCardVisible(true) 
   }
 
   function openCardFilter(){
-    setFilterCardVisible(true); 
+    setFilterCardVisible(true) 
   }
 
   function closeCardLogin(){
-    setLoginCardVisible(false); 
+    setLoginCardVisible(false) 
   }
 
   function closeCardSignup(){
-    setSignupCardVisible(false); 
+    setSignupCardVisible(false) 
   }
 
   function closeCardDeposit(){
-    setDepositCardVisible(false); 
-    updateSort({type:"date", ascending:false});
+    setDepositCardVisible(false) 
+    updateSort({type:"date", ascending:false})
   }
 
   function closeCardBuy(){
-    setBuyCardVisible(false); 
-    updateSort({type:"date", ascending:false});
+    setBuyCardVisible(false) 
+    updateSort({type:"date", ascending:false})
   }
 
   function closeCardWithdraw(){
-    setWithdrawCardVisible(false); 
-    updateSort({type:"date", ascending:false});
+    setWithdrawCardVisible(false) 
+    updateSort({type:"date", ascending:false})
   }
 
   function closeCardFilter(){
-    setFilterCardVisible(false); 
-    updateSort({type:"date", ascending:false});
+    setFilterCardVisible(false) 
+    updateSort({type:"date", ascending:false})
   }
 
   function goLogin(){
-    closeCardSignup();
-    openCardLogin();
+    closeCardSignup()
+    openCardLogin()
   }
 
   function goSignup(){
-    closeCardLogin();
-    openCardSignup();
+    closeCardLogin()
+    openCardSignup()
   }
 
   function refreshToken(args:[string, string]){
@@ -1336,54 +1183,53 @@ export default function Home() {
     })
     .catch((error:any)=>{
       logout()
-      console.error(error);
+      console.error(error)
     })
   }
 
   function loggedIn(email:string, token:string, life:number){
-    sessionStorage.setItem('email', email);
-    sessionStorage.setItem('token', token);
-    setEmail(email);
-    setToken(token);
+    sessionStorage.setItem('email', email)
+    sessionStorage.setItem('token', token)
+    setEmail(email)
+    setToken(token)
     
-    closeCardSignup();
-    closeCardLogin();
+    closeCardSignup()
+    closeCardLogin()
 
-    setTimeout(refreshToken, life-1000, [email, token]);
+    setTimeout(refreshToken, life-1000, [email, token])
   }
 
   function logout(){
-    sessionStorage.setItem('email', '');
-    sessionStorage.setItem('token', '');
-    setEmail('');
-    setToken('');
-    setDepositCardVisible(false);
-    setBuyCardVisible(false);
-    setWithdrawCardVisible(false);
-    setFilterCardVisible(false);
+    sessionStorage.setItem('email', '')
+    sessionStorage.setItem('token', '')
+    setEmail('')
+    setToken('')
+    setDepositCardVisible(false)
+    setBuyCardVisible(false)
+    setWithdrawCardVisible(false)
+    setFilterCardVisible(false)
   }
 
   useEffect(() => {
-    var m = sessionStorage.getItem('email');
+    let m = sessionStorage.getItem('email')
     if (m && m!= null && m!=email){
-      setEmail(m.toString());
+      setEmail(m.toString())
     }
     else{
-      setEmail("");
+      setEmail("")
     }
 
-    var t = sessionStorage.getItem('token');
+    let t = sessionStorage.getItem('token')
     if (t && t!= null && t!=token){
-      setToken(t.toString());
+      setToken(t.toString())
     }
     else{
-      setToken("");
+      setToken("")
     }
-  }, []);
+  }, [])
 
   return (
     <>
-
       <Head>
         <title>Exchange App</title>
         <meta name="description" content="Generated by create next app" />
@@ -1454,5 +1300,5 @@ export default function Home() {
         </main>
       )}
     </>
-  );
+  )
 }
